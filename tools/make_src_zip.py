@@ -4,23 +4,37 @@ r"""把源码项目打成压缩包，以后接着维护用。
 不带 venv / dist / PyInstaller 的 build 中间产物 / 录像 / 配置 / 日志。
 
 用法：python tools/make_src_zip.py [输出zip]
-默认输出：<项目>\dist\锋芒直播录屏-源码.zip
+默认输出：<项目>\dist\锋芒直播录屏-源码-<版本>.zip（版本号取自 core/version.py）
 """
 import sys
 import zipfile
 from pathlib import Path
 
 APP = Path(__file__).resolve().parents[1]
-OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else APP / "dist" / "锋芒直播录屏-源码.zip"
-SKIP_DIRS = {"venv", "dist", "__pycache__", "录像", ".git", ".idea", "_scratch"}
-SKIP_FILES = {"config.json", "config.json.bak", "window.json"}
-SKIP_PREFIX = ("锋芒直播录屏.log",)
-TOP = "锋芒直播录屏/"
+sys.path.insert(0, str(APP))
+
+from core.version import APP_NAME, VERSION  # noqa: E402
+
+OUT = (Path(sys.argv[1]) if len(sys.argv) > 1
+       else APP / "dist" / f"{APP_NAME}-源码-{VERSION}.zip")
+SKIP_DIRS = {
+    "venv", "dist", "__pycache__", "录像", ".git", ".idea", "_scratch",
+    ".codebase-memory",
+}
+SKIP_FILES = {
+    "config.json", "config.json.bak", "window.json",
+    "douyin_rooms.json", "_db_probe.py", "_probe_dy.py",
+    "_probe_dy2.py", "_probe_dy3.py",
+}
+SKIP_PREFIX = ("锋芒直播录屏.log", "douyin_probe_")
+TOP = APP_NAME + "/"
 
 
 def keep(rel):
     """build/ 只留 spec 文件，中间产物不要。"""
     parts = rel.parts
+    if parts and parts[0] == "tools" and "_scratch" in parts[1:]:
+        return False
     if any(part in SKIP_DIRS for part in parts):
         return False
     if parts[0] == "build":
@@ -48,6 +62,7 @@ def main():
             count += 1
             total += path.stat().st_size
     print("entries:", count, "uncompressed:", total)
+    print("版本:", VERSION)
     print("zip:", OUT, OUT.stat().st_size)
     with zipfile.ZipFile(OUT) as z:
         top = sorted({n.split("/", 1)[1].split("/")[0] for n in z.namelist() if "/" in n})

@@ -1,21 +1,37 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <title>锋芒直播录屏</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="settings.css" />
 </head>
 <body>
   <div class="app">
     <header class="topbar">
-      <div class="brand">
-        <span class="brand-dot"></span>
+      <div class="brand pywebview-drag-region">
         <span class="brand-name">锋芒直播录屏</span>
+        <span class="top-note">一款专业的直播录制软件</span>
       </div>
+      <div class="top-drag pywebview-drag-region"></div>
       <div class="top-actions">
-        <span class="top-note">锋芒直播录屏，永久免费给同行的录屏工具。</span>
-        <button class="pill" id="btnTranscode">视频转码</button>
-        <button class="icon-btn" id="btnMenu" title="菜单">≡</button>
+        <button id="btnQuality" class="pill">原画</button>
+        <button id="btnFormat" class="pill">录制TS</button>
+        <button id="btnTranscode" class="pill">视频转码</button>
+        <button id="btnRun" class="primary">检测录制</button>
+        <span id="versionText" class="version"></span>
+        <button id="btnTheme" class="icon-btn" title="切换深色 / 浅色" aria-label="切换深色 / 浅色"></button>
+        <button id="btnMenu" class="icon-btn" title="设置" aria-label="设置">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="3.1" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+      </div>
+      <div class="win-controls">
+        <button class="icon-btn win-btn" id="btnWinMin" title="最小化" aria-label="最小化"></button>
+        <button class="icon-btn win-btn" id="btnWinMax" title="最大化 / 还原" aria-label="最大化 / 还原"></button>
+        <button class="icon-btn win-btn close" id="btnWinClose" title="关闭" aria-label="关闭"></button>
       </div>
     </header>
 
@@ -40,42 +56,46 @@
 
       <section class="panel add-panel">
         <div class="panel-head">
-          <div class="panel-title">添加主播</div>
+          <button class="primary add-btn" id="btnAdd">添加到主播列表</button>
         </div>
         <div class="panel-body column">
           <textarea id="addText" spellcheck="false"
             placeholder="按 Ctrl+V 粘贴要检测录制的主播主页链接，一行一个"></textarea>
           <div class="formats">
-            <div class="format-row"><span class="pl-tag d">抖音</span>
-              <span class="fmt"><i>PC链接</i><code>live.douyin.com/xxx</code></span>
-              <span class="fmt"><i>APP直播间</i><code>v.douyin.com/xxx</code></span>
-              <span class="fmt"><i>APP主页</i><code>douyin.com/user/xxx</code></span>
-            </div>
-            <div class="format-row"><span class="pl-tag k">快手</span>
-              <span class="fmt"><i>PC链接</i><code>live.kuaishou.com/u/xxx</code></span>
-              <span class="fmt"><i>APP直播间</i><code>v.kuaishou.com/xxx</code></span>
-              <span class="fmt"><i>APP主页</i><code>live.kuaishou.com/profile/xxx</code></span>
+            <div class="format-row"><span class="pl-tag d">抖音</span><span class="pl-tag k">快手</span>
+              <span class="fmt"><i>支持APP直播间和主页</i></span>
             </div>
             <div class="format-row"><span class="pl-tag x">小红书</span>
               <span class="fmt"><i>PC链接</i><code>xiaohongshu.com/livestream/xxx</code></span>
               <span class="fmt"><i>APP直播间</i><code>xhslink.com/xxx</code></span>
-              <span class="fmt"><i>APP主页</i><em>读不到开播状态</em></span>
+            </div>
+            <div class="format-row"><span class="pl-tag b">B站</span>
+              <span class="fmt"><i>PC链接</i><code>live.bilibili.com/xxx</code></span>
+              <span class="fmt"><i>APP直播间</i><code>b23.tv/xxx</code></span>
+              <span class="fmt"><i>APP主页</i><em>请用房间号</em></span>
+            </div>
+            <div class="format-row"><span class="pl-tag hy">虎牙</span>
+              <span class="fmt"><i>PC链接</i><code>huya.com/xxx</code></span>
+              <span class="fmt"><i>APP直播间</i><code>live.huya.com/xxx</code></span>
+              <span class="fmt"><i>APP主页</i><em>请用房间号</em></span>
+            </div>
+            <div class="format-row"><span class="pl-tag dy">斗鱼</span>
+              <span class="fmt"><i>PC链接</i><code>douyu.com/xxx</code></span>
+              <span class="fmt"><i>APP直播间</i><code>m.douyu.com/xxx</code></span>
+              <span class="fmt"><i>APP主页</i><em>请用房间号</em></span>
+            </div>
+            <div class="format-row"><span class="pl-tag ac">Acfun</span>
+              <span class="fmt"><i>PC链接</i><code>live.acfun.cn/live/xxx</code></span>
+              <span class="fmt"><i>APP直播间</i><code>m.acfun.cn/live/xxx</code></span>
+            </div>
+            <div class="format-row"><span class="pl-tag zq">战旗</span>
+              <span class="fmt"><i>房间链接</i><code>zhanqi.tv/xxx</code></span>
             </div>
           </div>
-          <button class="primary block" id="btnAdd">添加到主播列表</button>
-          <div class="add-result muted" id="addResult"></div>
         </div>
       </section>
     </main>
 
-    <footer class="bottombar">
-      <span class="version" id="versionText">当前版本: 1.0.0</span>
-      <div class="bottom-right">
-        <button class="pill" id="btnQuality">蓝光</button>
-        <button class="pill" id="btnFormat">录制TS</button>
-        <button class="primary" id="btnRun">检测录制</button>
-      </div>
-    </footer>
   </div>
 
   <div class="menu hidden" id="mainMenu">
@@ -108,89 +128,174 @@
     <div class="dialog settings">
       <div class="dialog-head">
         <span class="brand-dot"></span><span>设置</span>
-        <button class="close" data-close="settingsModal">✕</button>
+        <button class="close" data-close="settingsModal" title="关闭" aria-label="关闭"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
       </div>
       <div class="dialog-body">
         <aside class="side">
-          <button class="side-item active" data-pane="basic">基本设置</button>
-          <button class="side-item" data-pane="about">关于</button>
+          <button class="side-item active" data-pane="basic"><span class="side-dot" aria-hidden="true"></span>基本设置</button>
+          <button class="side-item" data-pane="about"><span class="side-dot" aria-hidden="true"></span>关于</button>
         </aside>
         <div class="pane" id="paneBasic">
-          <div class="pane-row">
-            <label>检测频率 <input type="number" id="setInterval" min="5" max="600" step="1" /> 秒</label>
-            <label>保存位置 <input type="text" id="setSave" /> <button class="ghost small" id="btnPickFolder">选择</button></label>
-          </div>
-          <div class="pane-row">
-            <label>直播源
-              <select id="setStream">
-                <option value="flv">flv源</option>
-                <option value="m3u8">m3u8源</option>
-              </select>
-            </label>
-          </div>
-          <div class="pane-row two-col">
-            <div class="slider-field" title="只录制指定时长后，不再录制。">
-              <span class="label">限制时长</span>
-              <input type="range" id="setFileTime" min="0" max="300" step="10" />
-              <span class="slider-value" id="valFileTime">不限制</span>
+          <section class="set-group">
+            <div class="set-group-head">
+              <h3 class="set-group-title">录制参数</h3>
+              <p class="set-group-desc">多久查一次开播、录到哪个目录、用哪种直播源拉流。</p>
+              <p class="set-note">清晰度在顶栏第 1 个按钮里切换</p>
             </div>
-            <div class="slider-field" title="只录制指定文件大小后，不再录制。">
-              <span class="label">限制大小</span>
-              <input type="range" id="setFileSize" min="0" max="10000" step="100" />
-              <span class="slider-value" id="valFileSize">不限制</span>
+            <div class="set-rows">
+              <div class="pane-row">
+                <label class="field">
+                  <span class="field-label">检测频率</span>
+                  <span class="field-control">
+                    <input type="number" id="setInterval" min="5" max="600" step="1" />
+                    <span class="field-unit">秒</span>
+                  </span>
+                </label>
+              </div>
+              <div class="pane-row">
+                <label class="field">
+                  <span class="field-label">直播源</span>
+                  <span class="field-control select-wrap">
+                    <select id="setStream">
+                      <option value="flv">flv源</option>
+                      <option value="m3u8">m3u8源</option>
+                    </select>
+                    <span class="select-caret" aria-hidden="true"></span>
+                  </span>
+                </label>
+              </div>
+              <div class="pane-row pane-row-wide">
+                <label class="field">
+                  <span class="field-label">保存位置</span>
+                  <span class="field-control">
+                    <input type="text" id="setSave" />
+                    <button class="ghost small" id="btnPickFolder">选择</button>
+                  </span>
+                </label>
+              </div>
             </div>
-          </div>
-          <div class="pane-row two-col">
-            <div class="slider-field" title="按照指定时长给视频分段，达到时长后重新录制。">
-              <span class="label">切片时长</span>
-              <input type="range" id="setRecTime" min="0" max="300" step="10" />
-              <span class="slider-value" id="valRecTime">不限制</span>
+          </section>
+          <section class="set-group">
+            <div class="set-group-head">
+              <h3 class="set-group-title">输出与分段</h3>
+              <p class="set-group-desc">单个文件的时长与体积上限，以及到点、到量之后怎么切下一段。</p>
+              <p class="set-note">输出格式在顶栏切换</p>
             </div>
-            <div class="slider-field" title="按照指定文件大小给视频分段，达到设置值后重新录制。">
-              <span class="label">大小分段</span>
-              <input type="range" id="setRecSize" min="0" max="10000" step="100" />
-              <span class="slider-value" id="valRecSize">不分段</span>
+            <div class="set-rows">
+              <div class="pane-row two-col">
+                <div class="slider-field" title="只录制指定时长后，不再录制。">
+                  <span class="label">限制时长</span>
+                  <input type="range" id="setFileTime" min="0" max="300" step="10" />
+                  <span class="slider-value" id="valFileTime">不限制</span>
+                </div>
+                <div class="slider-field" title="只录制指定文件大小后，不再录制。">
+                  <span class="label">限制大小</span>
+                  <input type="range" id="setFileSize" min="0" max="10000" step="100" />
+                  <span class="slider-value" id="valFileSize">不限制</span>
+                </div>
+              </div>
+              <div class="pane-row two-col">
+                <div class="slider-field" title="按照指定时长给视频分段，达到时长后重新录制。">
+                  <span class="label">切片时长</span>
+                  <input type="range" id="setRecTime" min="0" max="300" step="10" />
+                  <span class="slider-value" id="valRecTime">不限制</span>
+                </div>
+                <div class="slider-field" title="按照指定文件大小给视频分段，达到设置值后重新录制。">
+                  <span class="label">大小分段</span>
+                  <input type="range" id="setRecSize" min="0" max="10000" step="100" />
+                  <span class="slider-value" id="valRecSize">不分段</span>
+                </div>
+              </div>
+              <div class="pane-row">
+                <div class="switch-field" title="主播进入 PK 模式切换时自动分段，常切换 PK 的主播建议打开。">
+                  <span class="label">自动分段</span>
+                  <button class="switch" id="setCheckPK" data-key="checkPK"></button>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="pane-row">
-            <div class="switch-field" title="主播进入 PK 模式切换时自动分段，常切换 PK 的主播建议打开。">
-              <span class="label">自动分段</span>
-              <button class="switch" id="setCheckPK" data-key="checkPK"></button>
+          </section>
+          <section class="set-group">
+            <div class="set-group-head">
+              <h3 class="set-group-title">界面与提示</h3>
+              <p class="set-group-desc">主播列表里显示哪些信息、开播时要不要出声，都能单独关掉。</p>
             </div>
-          </div>
-          <div class="pane-row two-col">
-            <div class="switch-field" title="录制时不显示已录制时长，可减少闪退情况。">
-              <span class="label">隐藏时长</span>
-              <button class="switch" id="setHideTime" data-key="hideTime"></button>
+            <div class="set-rows">
+              <div class="pane-row two-col">
+                <div class="switch-field" title="录制时不显示已录制时长，可减少闪退情况。">
+                  <span class="label">隐藏时长</span>
+                  <button class="switch" id="setHideTime" data-key="hideTime"></button>
+                </div>
+                <div class="switch-field" title="录制时不显示文件大小，可减少闪退情况。">
+                  <span class="label">隐藏大小</span>
+                  <button class="switch" id="setHideSize" data-key="hideFileSize"></button>
+                </div>
+              </div>
+              <div class="pane-row two-col">
+                <div class="switch-field" title="录制时显示实时在线人数并写入 txt 记录。">
+                  <span class="label">在线人数</span>
+                  <button class="switch" id="setShowCount" data-key="showUserCount"></button>
+                </div>
+                <div class="switch-field" title="主播开播时播放语音提示，可把 kaibo.mp3 换成你喜欢的声音。">
+                  <span class="label">开播提示</span>
+                  <button class="switch" id="setMp3" data-key="mp3play"></button>
+                </div>
+              </div>
+              <div class="pane-row two-col">
+                <div class="switch-field" title="打开后开机自动启动本软件，登录系统就会开始后台检测录制。">
+                  <span class="label">开机启动</span>
+                  <button class="switch" id="setAutoStart" data-key="autoStart"></button>
+                </div>
+                <div class="switch-field" title="打开后软件启动时自动最小化到托盘，只在后台检测录制，不弹窗打扰。">
+                  <span class="label">静默启动</span>
+                  <button class="switch" id="setSilentStart" data-key="silentStart"></button>
+                </div>
+              </div>
             </div>
-            <div class="switch-field" title="录制时不显示文件大小，可减少闪退情况。">
-              <span class="label">隐藏大小</span>
-              <button class="switch" id="setHideSize" data-key="hideFileSize"></button>
+          </section>
+          <section class="set-group">
+            <div class="set-group-head">
+              <h3 class="set-group-title">启动与托盘</h3>
+              <p class="set-group-desc">开软件要不要立刻检测，以及点右上角 × 之后程序去哪。</p>
             </div>
-          </div>
-          <div class="pane-row two-col">
-            <div class="switch-field" title="录制时显示实时在线人数并写入 txt 记录。">
-              <span class="label">在线人数</span>
-              <button class="switch" id="setShowCount" data-key="showUserCount"></button>
+            <div class="set-rows">
+              <div class="pane-row">
+                <div class="switch-field" title="打开后软件启动就自动开始检测录制，并且点「检测录制」时会立刻把列表里的主播全部查一遍，不用等检测频率那一轮。">
+                  <span class="label">启动自动检测</span>
+                  <button class="switch" id="setAutoCheck" data-key="autoCheck"></button>
+                </div>
+              </div>
+              <div class="pane-row">
+                <div class="switch-field" title="打开后点右上角 × 不退出程序，只把窗口收进右下角托盘继续后台监听录制；点最小化按钮仍然是缩到任务栏。">
+                  <span class="label">关闭到托盘</span>
+                  <button class="switch" id="setCloseTray" data-key="closeToTray"></button>
+                </div>
+              </div>
             </div>
-            <div class="switch-field" title="主播开播时播放语音提示，可把 kaibo.mp3 换成你喜欢的声音。">
-              <span class="label">开播提示</span>
-              <button class="switch" id="setMp3" data-key="mp3play"></button>
-            </div>
-          </div>
-          <div class="pane-row">
-            <div class="switch-field" title="打开后点右上角 × 不退出程序，只把窗口收进右下角托盘继续后台监听录制；点最小化按钮仍然是缩到任务栏。">
-              <span class="label">关闭到托盘</span>
-              <button class="switch" id="setCloseTray" data-key="closeToTray"></button>
-            </div>
-          </div>
+          </section>
         </div>
         <div class="pane hidden" id="paneAbout">
-          <p class="about-text">本软件由飞扬分享永久免费</p>
+          <section class="about-hero">
+            <span class="brand-dot" aria-hidden="true"></span>
+            <div class="about-ident">
+              <h2 class="about-name">锋芒直播录屏</h2>
+              <p class="about-text">本软件由飞扬分享永久免费</p>
+            </div>
+          </section>
+          <section class="set-group">
+            <div class="set-group-head">
+              <h3 class="set-group-title">使用说明</h3>
+              <p class="set-group-desc">内容与顶栏设置菜单里的「使用说明」逐条一致。</p>
+            </div>
+            <div class="about-doc">
+              <p class="about-text">【锋芒直播录屏】工具是一款专业的直播录制软件，可以帮助用户对抖音、快手、小红书的直播间进行录制和检测。该工具支持多种清晰度选择，包括蓝光、超清、高清、标清等不同选项，输出视频支持保存为ts、flv、mp4文件格式，用户可以根据自己的需求进行选择。</p>
+              <p class="about-text">除此之外，锋芒直播录屏工具还可以添加主播主页链接、直播间链接进行自动监控，以便及时发现并记录主播的开播时间和内容。同时小绿点还支持音频和VR直播间录制，并使用直播源进行录制，避免了手机屏幕录像带来的画质损失和卡顿问题。</p>
+              <p class="about-text">支持的平台（共 8 个）：抖音、快手、小红书、B站、虎牙、斗鱼、Acfun、战旗。前 7 个平台在「添加主播」框下方各有链接示例，战旗直接粘贴房间链接即可（形如 zhanqi.tv/房间名）。</p>
+            </div>
+          </section>
         </div>
       </div>
       <div class="dialog-foot">
-        <span class="muted" id="settingsVersion">Version: 1.0.0</span>
+        <span class="muted" id="settingsVersion">Version: 5.0.2</span>
         <div>
           <button class="primary" id="btnApplySettings">应用</button>
         </div>
@@ -202,7 +307,7 @@
     <div class="dialog medium">
       <div class="dialog-head">
         <span class="brand-dot"></span><span>视频转码（ts / flv 转 mp4）</span>
-        <button class="close" data-close="transcodeModal">✕</button>
+        <button class="close" data-close="transcodeModal" title="关闭" aria-label="关闭"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
       </div>
       <div class="dialog-body column">
         <ul class="file-list" id="fileList"></ul>
@@ -221,7 +326,7 @@
     <div class="dialog medium">
       <div class="dialog-head">
         <span class="brand-dot"></span><span>运行日志</span>
-        <button class="close" data-close="logsModal">✕</button>
+        <button class="close" data-close="logsModal" title="关闭" aria-label="关闭"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
       </div>
       <div class="dialog-body column">
         <pre class="logs" id="logBox"></pre>
@@ -233,12 +338,12 @@
     <div class="dialog doc">
       <div class="dialog-head">
         <span class="brand-dot"></span><span>使用说明</span>
-        <button class="close" data-close="readmeModal">✕</button>
+        <button class="close" data-close="readmeModal" title="关闭" aria-label="关闭"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
       </div>
       <div class="dialog-body column">
         <p class="doc-text">【锋芒直播录屏】工具是一款专业的直播录制软件，可以帮助用户对抖音、快手、小红书的直播间进行录制和检测。该工具支持多种清晰度选择，包括蓝光、超清、高清、标清等不同选项，输出视频支持保存为ts、flv、mp4文件格式，用户可以根据自己的需求进行选择。</p>
         <p class="doc-text">除此之外，锋芒直播录屏工具还可以添加主播主页链接、直播间链接进行自动监控，以便及时发现并记录主播的开播时间和内容。同时小绿点还支持音频和VR直播间录制，并使用直播源进行录制，避免了手机屏幕录像带来的画质损失和卡顿问题。</p>
-        <p class="doc-text doc-contact">微信DK17179</p>
+        <p class="doc-text">支持的平台（共 8 个）：抖音、快手、小红书、B站、虎牙、斗鱼、Acfun、战旗。前 7 个平台在「添加主播」框下方各有链接示例，战旗直接粘贴房间链接即可（形如 zhanqi.tv/房间名）。</p>
       </div>
     </div>
   </div>

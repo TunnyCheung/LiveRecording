@@ -1,14 +1,15 @@
-# LiveRecording直播录屏
+# 锋芒直播录屏 5.0.2
 
-抖音 / 快手 / 小红书直播开播监听 + 自动录制的小工具，界面和操作习惯照着
+抖音 / 快手 / 小红书 / B站 / 虎牙 / 斗鱼 / Acfun 直播开播监听 + 自动录制的小工具，界面和操作习惯照着
 
 ## 怎么用
 
 1. 打开程序。
 2. 在右边「添加主播」框里粘贴主播主页链接（一行一个），点「添加到主播列表」。
-   三个平台的链接可以混着粘，程序按链接自己认平台。每个平台认下面这几种写法：
+   七个平台的链接可以混着粘，程序按链接自己认平台。每个平台认下面这几种写法：
    - 抖音：PC链接 `https://live.douyin.com/xxxxxxxx`、APP直播间 `https://v.douyin.com/xxxxx/`、
-     APP主页 `https://www.douyin.com/user/xxxxxxxxx`
+     APP主页 `https://www.douyin.com/user/xxxxxxxxx`。主页链接会在添加时解析出
+     当前直播间号并写入配置；后续检测直接走稳定的直播间接口。
    - 快手：PC链接 `https://live.kuaishou.com/u/xxxxxxxx`、APP直播间 `https://v.kuaishou.com/xxxxx`、
      APP主页 `https://live.kuaishou.com/profile/xxxxxxxx`
    - 小红书：PC链接 `https://www.xiaohongshu.com/livestream/xxxxxxxx`、
@@ -19,13 +20,25 @@
      （实测主播正在直播时，他的主页里也找不到房间号，这块官方放在了要登录的接口后面）。
      主页链接被挡下时，提示里会把主播昵称带出来，方便你确认没点错人。
      另外房间号只管这一场直播，主播下播后那条记录会显示「未开播」，他下次开播要重新粘一条新链接。
+   - B站：PC链接 `https://live.bilibili.com/xxxxxxxx`、APP直播间 `https://b23.tv/xxxxx`。
+     短链会先展开；如果展开后是普通视频页而不是直播间，会提示格式不正确。
+   - 虎牙：PC链接 `https://www.huya.com/xxxxxxxx`，数字房间号和 `lpl` 这类字母别名都支持。
+   - 斗鱼：PC链接 `https://www.douyu.com/xxxxxxxx`，数字房间号和 `yyf` 这类字母别名都支持。
+   - Acfun：PC/手机直播间 `https://live.acfun.cn/live/<数字房间号>` 或
+     `https://m.acfun.cn/live/<数字房间号>`。
    APP 里点「分享 → 复制链接」给出来的常常是一整句话（一句话 + 地址 + 说明），
    不用自己剪：整段直接粘进来，程序会自己把里面那条链接抠出来。
    同一位主播只会有一条：已经加过的再粘一次（哪怕换成另一种链接写法、或者只粘快手号）
    都会被挡下来，提示「已经在列表里了：昵称」。
    只有一个例外：这一条还缺分享链接、而这次粘进来的正好是分享链接，那就不算重复，
    程序会把分享链接补到这条记录上（提示「已补上分享链接」），列表行数不变。
-3. 点右下角「检测录制」开始监听。主播开播后会自动用 ffmpeg 录制到保存目录。
+3. 点右上角「检测录制」开始监听。主播开播后会自动用 ffmpeg 录制到保存目录。
+   默认打开「启动自动检测」：程序一打开就已经在检测了；点「检测录制」会立刻把列表里的主播
+   全部查一遍，不用等检测频率那一轮。
+   列表里每一行还会标出这位主播「上次录制」到什么时候；从来没录过的显示「未录制」。
+   名字太长（超过 6 个字）只显示前 6 个字，多出来的用 `**` 代替，鼠标停在名字上能看到全名。
+   想在列表里用短一点的叫法：在主播那一行点右键 →「备注该主播…」，写个备注就显示备注，
+   清空保存就恢复显示原名。
 4. 想马上看某个主播的状态：在列表里右键 →「立即检测开播」。
    每一行右边那个开关就是这位主播的自动录制开关：关掉之后开关左边会变成绿色的
    「开始录制」，再点一下就恢复自动录制。
@@ -48,21 +61,42 @@
 | 自动分段 | 主播切换 PK、直播源变化时立刻另起一段 |
 | 隐藏时长 | 录制中不显示已录制时长 |
 | 隐藏大小 | 录制中不显示文件大小 |
-| 在线人数 | 显示实时在线人数，并写入同名 `_在线人数.txt` |
+| 在线人数 | 显示实时在线人数（抖音的「2w+」这类写法会换算成数字），并写入同名 `_在线人数.txt` |
 | 开播提示 | 开播时播放程序目录下的 `kaibo.mp3`（可自己替换） |
+| 启动自动检测 | 默认打开：程序启动就自动开始检测录制；点「检测录制」时立刻把主播全部查一遍，不用等检测频率那一轮 |
 
 配置保存在程序目录的 `config.json`，字段名和原软件一致（`intervalTime` / `definition` /
 `streamType` / `outFormat` / `checkPK` / `fileSize` / `fileTime` / `recTime` /
-`recFileSize` / `save` / `mp3play` / `hideTime` / `hideFileSize` / `showUserCount`）。
+`recFileSize` / `save` / `mp3play` / `hideTime` / `hideFileSize` / `showUserCount` /
+`autoCheck`）。
 
-底部「蓝光」是清晰度（原画/蓝光/高清/标清/流畅），「录制TS」是输出格式（TS/MP4/FLV）。
-设置窗口左边还有一页「关于」；标题栏 ≡ 菜单里的「使用说明」是程序内的说明小窗。
+窗口没有系统标题栏，标题栏是软件自己画的：左边是名字和「永久免费」，右边依次是
+「原画」（清晰度：原画/蓝光/高清/标清/流畅）、「录制TS」（输出格式：TS/MP4/FLV）、
+「视频转码」、「检测录制」、版本号、月亮/太阳（深色浅色切换）、齿轮（设置菜单），
+最右是缩小 / 最大化 / 关闭三个窗口键；按住标题栏空白处可以拖窗口，双击标题栏最大化或还原，
+拖窗口边缘可以缩放。主题分深色和浅色两套，切换后下次打开还是那一套。
+
+设置窗口左边还有一页「关于」，里面就是「使用说明」的正文；顶栏齿轮菜单里的「使用说明」
+是同一个内容的小窗。
 
 ## 实现说明
 
-- 取流全部走抖音自己的网页接口：`/aweme/v1/web/user/profile/other/` 拿开播状态和
-  `room_data`，`room_data` 里带 `web_rid` 和真实拉流地址（`flv_pull_url` / `hls_pull_url_map`）；
-  直播间链接走 `webcast/room/web/enter/`。
+- 抖音检测分三层，谁能给出明确结论就用谁：
+  1. 记录里已经有 `web_rid` 的主播走
+     `https://live.douyin.com/webcast/room/web/enter/`：返回昵称、开播状态、
+     `flv_pull_url` 和 `hls_pull_url_map`，没开播也会明确回一个「未开播」的房间。
+  2. 没有 `web_rid` 时先按 uid 问
+     `https://live.douyin.com/webcast/distribution/check_user_live_status/`：
+     返回 `user_live: []` 就是**明确未开播**，返回 `live_status: 1` 就是在播。
+     uid 来自分享接口 `iesdouyin user/info` 的橱窗卡片（里面的 `uid=`），添加主播时就写进配置。
+     这一步是「未开播」能被认出来的关键：官方主页接口
+     `www.douyin.com/aweme/v1/web/user/profile/other/` 在不少家庭宽带 IP 上会返回
+     HTTP 200 但 body 是空的（风控），只有它的时候未开播只能显示「无法确认」。
+  3. 上面两层都没结论时才降级：streamget 的 reflow 链路、官方主页接口（补资料 / 取 room_data），
+     以及添加主播时用系统 WebView2 打开公开主页、从“直播中”入口提取
+     `live.douyin.com/<web_rid>`。隐藏解析子进程有硬超时，失败后同一账号冷却 3 分钟；
+     明确未开播的主播根本不会去开浏览器，所以刷新很快。
+     读不到状态时显示「无法确认」，不会把风控当成未开播。
 - 快手同样走它自己的网页接口：`v.kuaishou.com` 分享链先展开跳转拿到主播 ID，
    **优先打开分享页本身**（手机 UA）读 `window.INIT_STATE`：这是快手服务端渲染时就写进
    HTML 的接口原始返回，昵称、头像、开播状态、在线人数、全部清晰度地址一次拿全，
@@ -102,6 +136,19 @@
    分享链接只在需要展开房间号、或者固定地址取不到时才用；
    短时间连着打分享短链会被小红书换成验证页，那种情况提示的是「过几分钟再试」，
    不会跟「主页链接」混为一谈。
+- 程序只允许开一个：占了一个全局互斥体（`FengmangLiveScreen.SingleInstance.v1`），第二次双击
+  不会再开新进程，而是把已经在跑的那个窗口从托盘 / 最小化里还原出来并置顶，日志里会留一行记录。
+- 窗口是无边框的（pywebview `frameless`），拖动交给 pywebview 的
+  `.pywebview-drag-region`（只有标题栏那两块是拖动区，按钮不在里面，不会点着点着把窗口拖跑），
+  最大化 / 还原是自己按「工作区」摆的（系统的最大化在无边框窗口上会盖住任务栏）；
+  另外界面出来后会给窗口补一条 `WS_THICKFRAME` 样式，把四周的缩放边框找回来，
+  不然无边框窗口拖不了大小。补样式时**不改窗口尺寸**，所以 `window.json` 不会一次比一次大。
+- 主题（深色 / 浅色）存在 `config.json` 的 `theme` 字段，界面用 `<html data-theme="...">`
+  切一整套 CSS 令牌（颜色、玻璃、阴影、焦点环都在里面），切换时只换这一个属性。
+- 主界面每秒刷新一次，但只有内容真的变了才写 DOM：列表顺序没变时一个节点都不碰，
+  所以鼠标停在某一行上时，那一行（包括悬停才显示的「移除」按钮）不会因为刷新而闪动。
+- 「上次录制」是按录像文件名里的时间戳算出来的（比文件修改时间可靠，录像挪过目录也不变），
+  所以换台电脑、把录像拷到别处，列表里的时间照样对得上。
 - 界面用 pywebview（系统自带 WebView2）渲染，窗口标题栏是系统原生的，
   所以标题栏和原软件的自绘标题栏不完全一样，其余部分按原布局做。
 - 窗口位置/大小由 `window.json` 记着：拖动或缩放停下 0.8 秒后写一次，关窗口时再写一次；
@@ -119,13 +166,17 @@
 app.py            程序入口（窗口 + 与界面通信）
 core/config.py    config.json 读写
 core/douyin.py    抖音接口：链接解析 / 开播状态 / 取流
+core/douyin_browser.py 抖音主页解析 web_rid（子进程 + 负缓存）
+core/streamget_platform.py B站/虎牙/斗鱼/Acfun 适配
 core/kuaishou.py  快手接口：链接解析 / 开播状态 / 取流
 core/xiaohongshu.py 小红书接口：链接解析 / 开播状态 / 取流
 core/engine.py    监测循环 + ffmpeg 录制
 core/vault.py     界面资源加解密
 core/guard.py     完整性清单校验（动过文件就不让启动）
+core/count.py     各平台「在线人数」这类展示串的统一解析
+core/version.py   版本号唯一来源（界面标题、启动日志、打包文件名都取自这里）
 ui/               界面源码（HTML/CSS/JS）；打包时加密成 ui.bin，不直接发布
-venv/             依赖（requests、pywebview）
+venv/             本地依赖（不发布；重新安装见 requirements.txt）
 录像/             默认保存目录
 window.json       上次的窗口位置和大小（首次运行还没有这个文件）
 kaibo.mp3         开播提示音（可选，自己放）
@@ -135,9 +186,38 @@ kaibo.mp3         开播提示音（可选，自己放）
 （界面在里面是 `_internal\ui.bin`，完整性清单是 `_internal\manifest.bin`），
 第一次运行会在同目录生成 `config.json`、`window.json` 和 `录像\`。
 
+## 打包发布
+
+版本号只有一个来源：`core/version.py` 里的 `VERSION`。界面标题、窗口标题、启动日志、
+以及打包出来的压缩包文件名都跟着它走，改一处就够。
+
+改完版本号，在项目根目录跑一条命令（它会重新加密界面 → PyInstaller 打包 → 拷 ffmpeg / README
+→ 生成完整性清单 → 打出两个带版本号的压缩包）：
+
+```bat
+venv\Scripts\python.exe tools\build_app.py
+```
+
+产物：
+
+| 文件 | 说明 |
+| --- | --- |
+| `dist\锋芒直播录屏-<版本>.zip` | 绿色版压缩包，解压即用 |
+| `dist\锋芒直播录屏-源码-<版本>.zip` | 源码压缩包，接着维护用 |
+| `dist\锋芒直播录屏\` | 打包目录本身（exe + `_internal\` + ffmpeg + README） |
+
+收尾核对（清单是否对得上最终 exe、两个包里有没有混进 config / 日志 / 录像）：
+
+```bat
+venv\Scripts\python.exe tools\final_guard_check.py
+```
+
+程序启动时会在 `锋芒直播录屏.log` 里写一行 `锋芒直播录屏 <版本> 启动`，
+拿到别人的日志也能一眼看出是哪个版本。
+
 ## 重新装依赖（venv 坏了时）
 
 ```bat
 python -m venv venv
-venv\Scripts\python -m pip install requests pywebview pystray pillow
+venv\Scripts\python.exe -m pip install -r requirements.txt
 ```

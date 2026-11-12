@@ -15,6 +15,10 @@ __pycache__/
 
 # 维护脚本的临时目录（_scratch 是探针和截图，不进仓库）
 /tools/_scratch/
+/_scratch/
+
+# codebase-memory 本地索引（约 1 MB，可按需重建）
+/.codebase-memory/
 
 # ffmpeg 是大件，按 README 里写的方式自己放到 exe 旁边
 /ffmpeg.exe

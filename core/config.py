@@ -40,7 +40,11 @@ DEFAULT_CONFIG = {
     "hideTime": False,           # 隐藏时长（录制中不显示已录制时长）
     "hideFileSize": False,       # 隐藏大小（录制中不显示文件大小）
     "showUserCount": False,      # 在线人数（显示并写入 txt 记录）
-    "closeToTray": False,        # 点右上角 × 收进托盘（不退出程序）
+    "closeToTray": True,         # 点右上角 × 收进托盘（不退出程序）——默认打开
+    "autoCheck": True,           # 启动自动检测：开软件就自动开始检测录制
+    "autoStart": False,          # 开机启动：登录系统就自动打开本软件
+    "silentStart": False,        # 静默启动：启动时直接最小化到托盘，不弹窗
+    "theme": "dark",             # 界面主题：dark 深色 / light 浅色
 }
 
 
@@ -55,6 +59,8 @@ def _clean_user(raw):
         "avatar": raw.get("avatar", ""),
         "disable": bool(raw.get("disable", False)),
         "mode": raw.get("mode", "video"),
+        # 自定义备注：列表优先显示它，长昵称就不用在那一行里挤成一团
+        "remark": str(raw.get("remark", "") or ""),
         # 快手分享短链：检测时每轮都重新打开它，拿开播状态和清晰度地址
         "share_url": raw.get("share_url", ""),
     }
@@ -79,6 +85,8 @@ class Store:
         for key, default in DEFAULT_CONFIG.items():
             value = cfg.get(key, default)
             self.config[key] = value
+        if self.config.get("theme") not in ("dark", "light"):
+            self.config["theme"] = DEFAULT_CONFIG["theme"]
         self.users = [_clean_user(u) for u in (data.get("user") or [])]
 
     def save(self):
@@ -101,6 +109,8 @@ class Store:
                 except (TypeError, ValueError):
                     value = default
             self.config[key] = value
+        if self.config.get("theme") not in ("dark", "light"):
+            self.config["theme"] = DEFAULT_CONFIG["theme"]   # 只认这两个值，别让它写坏
         self.save()
         return self.config
 
@@ -108,7 +118,8 @@ class Store:
         """同一个主播只留一条：链接换个写法、平台链接混着粘都不该重复添加。
 
         抖音有 sec_uid / web_rid，快手只有快手号和数字 user_id，所以这里把身份字段
-        挨个比一遍，任意一个对上就算已经在列表里了。
+        挨个比一遍，任意一个对上就算已经在列表里了。只有同一个平台才比：斗鱼、虎牙、
+        B站等平台的房间号可能撞数字，跨平台不能当成同一个主播。
         """
         for existing in self.users:
             if self.same_user(existing, user):
@@ -119,6 +130,10 @@ class Store:
 
     @staticmethod
     def same_user(left, right):
+        left_type = str((left or {}).get("type") or "douyin")
+        right_type = str((right or {}).get("type") or "douyin")
+        if left_type != right_type:
+            return False
         for key in ("userid", "sec_uid", "web_rid", "unique_id", "share_url"):
             mine = str((left or {}).get(key) or "").strip()
             yours = str((right or {}).get(key) or "").strip()
@@ -162,15 +177,19 @@ class WindowState:
     def load(self):
         try:
             data = json.loads(self.path.read_text(encoding="utf-8"))
-            return {key: int(data[key]) for key in ("x", "y", "width", "height")}
+            result = {key: int(data[key]) for key in ("x", "y", "width", "height")}
         except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
             return None
+        # moved=true 表示用户手动拖过/缩放过窗口，位置才值得还原；
+        # 没这个字段（老版本写的）一律当作「没拖过」，启动时居中。
+        result["moved"] = bool(data.get("moved"))
+        return result
 
-    def save(self, x, y, width, height):
+    def save(self, x, y, width, height, moved=False):
         width, height = int(width), int(height)
         if width <= 0 or height <= 0:
             return
-        self.path.write_text(
-            json.dumps({"x": int(x), "y": int(y), "width": width, "height": height}),
-            encoding="utf-8",
-        )
+        payload = {"x": int(x), "y": int(y), "width": width, "height": height}
+        if moved:
+            payload["moved"] = True
+        self.path.write_text(json.dumps(payload), encoding="utf-8")

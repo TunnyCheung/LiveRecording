@@ -5,9 +5,10 @@ import sys
 import time
 from ctypes import wintypes
 from pathlib import Path
+from core.version import APP_NAME, VERSION  # 版本号唯一来源
 
 APP = Path(__file__).resolve().parents[1]
-TITLE = "锋芒直播录屏 1.0.0"
+TITLE = f"{APP_NAME} {VERSION}"
 PYW = APP / "venv" / "Scripts" / "pythonw.exe"
 
 user32 = ctypes.windll.user32

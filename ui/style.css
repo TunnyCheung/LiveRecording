@@ -1,34 +1,334 @@
+/* ═══════════════════════════════════════════════════════════════════
+   锋芒直播录屏 · 外壳样式（顶栏 / 工作区 / 列表 / 菜单 / 弹窗）
+
+   ── 主题令牌 ─────────────────────────────────────────────────────
+   两套令牌，切换只换 <html data-theme>，不动任何结构：
+     :root, :root[data-theme="dark"]  深色（默认外观，也是 HTML 上的初始值）
+     :root[data-theme="light"]        浅色
+   两组各自自足（值只在本组里取），所以缺 data-theme 时按深色渲染，
+   不会出现「令牌没定义 → 白底白字」的半截状态。
+   对比度（正文 ≥ 4.5:1，实测于各自面板底色上）：
+     深色 ink 15.8 / ink-2 10.9 / ink-3 7.1 ；浅色 ink 17.4 / ink-2 8.1 / ink-3 5.6。
+   玻璃感 = 半透明面板 + backdrop-filter: blur() + 细高光描边 + 柔和阴影。
+
+   ── 无边框窗口 ───────────────────────────────────────────────────
+   顶栏就是标题栏：左 .brand，中间 .top-drag 撑开，右 .top-actions，
+   最右 .win-controls（最小化 / 最大化 / 关闭）。
+   只有带 .pywebview-drag-region 的两个元素是拖动区，按钮一律在拖动区之外，
+   否则点按钮会变成拖窗口。
+   ═══════════════════════════════════════════════════════════════════ */
+
 * { box-sizing: border-box; }
 
-:root {
+/* ============ 令牌 · 深色（默认） ============ */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --blur: 20px;
+
+  /* 背景：一层底色 + 三团极淡的光晕，给玻璃面板提供折射层次 */
+  --bg-base: #0b0e13;
+  /* 背景：三团饱和光晕（绿 / 蓝 / 靛）叠在一层深蓝黑斜向渐变上 —— 深色偏冷、不发灰 */
+  --bg-glow-1: rgba(7, 193, 96, .22);
+  --bg-glow-2: rgba(72, 110, 255, .20);
+  --bg-glow-3: rgba(29, 78, 216, .16);
+  --grad-bg:
+    radial-gradient(1100px 560px at 8% -14%, var(--bg-glow-1), transparent 60%),
+    radial-gradient(980px 520px at 104% -6%, var(--bg-glow-2), transparent 58%),
+    radial-gradient(820px 520px at 50% 120%, var(--bg-glow-3), transparent 62%),
+    linear-gradient(168deg, #0d1420 0%, #090d15 48%, #070a10 100%);
+  /* 顶栏 / 卡片 / 胶囊 / 主按钮：上亮下暗的一层薄纱，叠在半透明底上 */
+  --grad-bar: linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .02) 58%, rgba(255, 255, 255, 0));
+  --grad-card: linear-gradient(157deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .022) 52%, rgba(0, 0, 0, .16));
+  --grad-primary: linear-gradient(180deg, #0c8546, #086231);
+  --grad-primary-hover: linear-gradient(180deg, #0d8748, #0a7239);
+  --grad-danger: linear-gradient(180deg, #c62828, #9e1f1f);
+  --grad-danger-hover: linear-gradient(180deg, #b52323, #8d1c1c);
+  --green-solid-edge: rgba(255, 255, 255, .18);   /* 实心绿按钮的 1px 描边 */
+
+  /* 主按钮「炫彩」：深色底上跑一条青→蓝→紫→粉→金的流动色边。
+     不是描边式、没有浮雕——底是沉稳的深色玻璃，色全在边上走，安静又高级。 */
+  --cta-fill: rgba(22, 26, 44, .92);
+  --cta-fill-hover: rgba(30, 35, 58, .94);
+  --cta-fill-active: rgba(18, 21, 36, .96);
+  --cta-ink: #f2f5ff;
+  --cta-radius: 10px;           /* 小圆角胶囊 */
+  --cta-ease: cubic-bezier(.16, 1, .3, 1);
+  /* 彩色带：青 → 蓝 → 紫 → 粉 → 金 → 回青，首尾同色才能无缝循环 */
+  --cta-spectrum: conic-gradient(from var(--cta-angle, 0deg),
+      #22d3ee, #3b82f6, #8b5cf6, #ec4899, #f59e0b, #22d3ee);
+  --cta-spectrum-hover: conic-gradient(from var(--cta-angle, 0deg),
+      #67e8f9, #60a5fa, #a78bfa, #f472b6, #fbbf24, #67e8f9);
+  --cta-halo: 0 0 18px rgba(139, 92, 246, .30), 0 0 34px rgba(59, 130, 246, .18);
+  --cta-halo-hover: 0 0 24px rgba(139, 92, 246, .48), 0 0 46px rgba(59, 130, 246, .28);
+  --cta-ring: rgba(167, 139, 250, .85);
+
+  /* 玻璃面板：半透明 + 高光描边 */
+  --surface: rgba(24, 28, 36, .72);
+  --surface-2: rgba(32, 37, 46, .82);
+  --surface-3: rgba(255, 255, 255, .05);
+  --card: rgba(255, 255, 255, .045);
+  --highlight: rgba(255, 255, 255, .08);
+  --hairline: rgba(255, 255, 255, .10);
+  --hairline-soft: rgba(255, 255, 255, .06);
+  --line: rgba(255, 255, 255, .10);
+  --divider: rgba(255, 255, 255, .07);
+
+  /* 文字 */
+  --ink: #eef2f7;
+  --ink-2: #c2cbd6;
+  --ink-3: #9aa5b4;
+  --icon: #b9c3cf;
+
+  /* 控件 */
+  /* 胶囊焦点环用的绿 */
+  --pill-ink: var(--green-ink);
+  /* 添加按钮已并入 .primary 的实色主题绿，旧的 --add-* / --pill-* 渐变令牌全部退役 */
+  /* 中性洗色（图标键 / 窗口键 / 关闭键的 hover 底），与蓝色胶囊区分开 */
+  --pill-wash: rgba(255, 255, 255, .07);
+  --pill-wash-active: rgba(255, 255, 255, .12);
+  --chip-fill: rgba(255, 255, 255, .08);   /* 徽标 / 标签 / 代码片这类淡填充 */
+  --field-bg: rgba(255, 255, 255, .06);
+  --field-bg-focus: rgba(255, 255, 255, .10);
+  --ghost-bg: rgba(255, 255, 255, .05);
+  --ghost-bg-hover: rgba(255, 255, 255, .11);
+  --ghost-border: rgba(255, 255, 255, .16);
+  --switch-off: rgba(255, 255, 255, .18);
+  --range-track: rgba(255, 255, 255, .16);
+  --disabled: rgba(255, 255, 255, .14);
+  --skeleton: rgba(255, 255, 255, .10);
+  --row-hover: rgba(255, 255, 255, .06);
+  --row-selected: rgba(7, 193, 96, .16);
+
+  /* 主色：--green 只用于描边 / 圆点 / 开关这类非文字块；
+     --green-ink 是能当文字用的绿；--green-solid 是压白字的实心绿（≥ 4.5:1） */
   --green: #07c160;
-  --green-soft: #35c46a;
-  --green-bg: #e8f8ee;
-  --red: #f5555d;
-  --ink: #2b2b2b;
-  --ink-2: #6b6b6b;
-  --ink-3: #9b9b9b;
-  --line: #ececec;
-  --divider: #e3e7ec;
-  --pill: #f2f3f5;
-  --bg: #f5f6f8;
-  --card: #ffffff;
-  --ks: #ff5b1f;
+  --green-soft: #35c46a;   /* 旧令牌，保留兼容 */
+  --green-ink: #3ddc84;
+  --green-solid: #0b7a3f;
+  --green-solid-hover: #096534;
+  --green-bg: rgba(7, 193, 96, .16);
+
+  /* 危险色 */
+  --red: #ff6b72;
+  --red-solid: #c62828;
+  --red-solid-hover: #a91f1f;
+
+  /* 遮罩 / 浮层 / 阴影 */
+  --scrim: rgba(4, 6, 10, .58);
+  --toast-bg: rgba(12, 16, 21, .92);
+  --toast-ink: #f4f7fa;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .30);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, .42);
+  --shadow-3: 0 26px 70px rgba(0, 0, 0, .58);
+
+  /* 平台色：压白字，全部 ≥ 4.5:1 */
+  --chip-default: #4a5058;
+  --chip-d: #3d434b;
+  --chip-ks: #c94812;
+  --chip-xhs: #d81e37;
+  --chip-b: #0b7fa8;
+  --chip-hy: #b3560b;
+  --chip-dy: #cf4a15;
+  --chip-ac: #d13a48;
+  --chip-zq: #f97316;
+  --ks: #c94812;
+
+  /* 滚动条 */
+  --selection: rgba(7, 193, 96, .34);
+  --scroll-thumb: rgba(255, 255, 255, .18);
+  --scroll-thumb-hover: rgba(255, 255, 255, .30);
+  --scroll-track: transparent;
 }
 
+/* ============ 令牌 · 浅色 ============ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --blur: 20px;
+
+  --bg-base: #eaeef4;
+  /* 浅色：光晕保留饱和度，底色是冷白 → 浅灰蓝的斜向渐变，不糊成一片白 */
+  --bg-glow-1: rgba(7, 193, 96, .20);
+  --bg-glow-2: rgba(59, 110, 255, .18);
+  --bg-glow-3: rgba(7, 193, 96, .10);
+  --grad-bg:
+    radial-gradient(1100px 560px at 6% -14%, var(--bg-glow-1), transparent 60%),
+    radial-gradient(1000px 540px at 104% -6%, var(--bg-glow-2), transparent 58%),
+    radial-gradient(820px 520px at 50% 120%, var(--bg-glow-3), transparent 62%),
+    linear-gradient(168deg, #f5f8fc 0%, #eaeef5 52%, #e3e9f2 100%);
+  --grad-bar: linear-gradient(180deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, .14));
+  --grad-card: linear-gradient(157deg, rgba(255, 255, 255, .50), rgba(255, 255, 255, .12) 54%, rgba(16, 24, 32, .05));
+  --grad-primary: linear-gradient(180deg, #0c8546, #086231);
+  --grad-primary-hover: linear-gradient(180deg, #0d8748, #0a7239);
+  --grad-danger: linear-gradient(180deg, #c62828, #9e1f1f);
+  --grad-danger-hover: linear-gradient(180deg, #b52323, #8d1c1c);
+  --green-solid-edge: rgba(8, 98, 49, .85);   /* 实心绿按钮的 1px 描边 */
+
+  /* 浅色主题的星空按钮：底色更深一点，才压得住浅色背景、白字也够亮 */
+  /* 浅色主题：同色相提亮一档，白字对比仍 >6:1 */
+  /* 浅色主题：实色绿 + 白字（对比 ≥4.5） */
+  /* 浅色主题：同样「玻璃 + 绿」，底稍深保证白字对比 */
+  /* 浅色主题：同样是描边式，字用深绿保证对比 */
+  --cta-fill: rgba(255, 255, 255, .95);
+  --cta-fill-hover: #ffffff;
+  --cta-fill-active: rgba(245, 247, 255, .98);
+  --cta-ink: #1b2540;
+  --cta-radius: 10px;
+  --cta-ease: cubic-bezier(.16, 1, .3, 1);
+  /* 浅色主题：同样的彩色边，但底用浅色，字用深色保证对比 */
+  --cta-spectrum: conic-gradient(from var(--cta-angle, 0deg),
+      #06b6d4, #3b82f6, #8b5cf6, #db2777, #d97706, #06b6d4);
+  --cta-spectrum-hover: conic-gradient(from var(--cta-angle, 0deg),
+      #0891b2, #2563eb, #7c3aed, #be185d, #b45309, #0891b2);
+  --cta-halo: 0 0 16px rgba(139, 92, 246, .22), 0 0 30px rgba(59, 130, 246, .14);
+  --cta-halo-hover: 0 0 22px rgba(139, 92, 246, .34), 0 0 40px rgba(59, 130, 246, .20);
+  --cta-ring: rgba(124, 58, 237, .70);
+
+  --surface: rgba(255, 255, 255, .72);
+  --surface-2: rgba(255, 255, 255, .86);
+  --surface-3: rgba(16, 24, 32, .04);
+  --card: rgba(255, 255, 255, .62);
+  --highlight: rgba(255, 255, 255, .90);
+  --hairline: rgba(16, 24, 32, .10);
+  --hairline-soft: rgba(16, 24, 32, .07);
+  --line: rgba(16, 24, 32, .11);
+  --divider: rgba(16, 24, 32, .08);
+
+  --ink: #12161c;
+  --ink-2: #454e5b;
+  --ink-3: #5b6674;
+  --icon: #4a5462;
+
+  /* 胶囊焦点环用的绿 */
+  --pill-ink: var(--green-ink);
+  --pill-wash: rgba(16, 24, 32, .05);
+  --pill-wash-active: rgba(16, 24, 32, .09);
+  --chip-fill: rgba(16, 24, 32, .06);
+  --field-bg: rgba(255, 255, 255, .92);
+  --field-bg-focus: #ffffff;
+  --ghost-bg: rgba(255, 255, 255, .82);
+  --ghost-bg-hover: #ffffff;
+  --ghost-border: rgba(16, 24, 32, .16);
+  --switch-off: rgba(16, 24, 32, .18);
+  --range-track: rgba(16, 24, 32, .14);
+  --disabled: rgba(16, 24, 32, .14);
+  --skeleton: rgba(16, 24, 32, .08);
+  --row-hover: rgba(16, 24, 32, .055);
+  --row-selected: rgba(7, 193, 96, .14);
+
+  --green: #07c160;
+  --green-soft: #0b7a3f;   /* 旧令牌，保留兼容 */
+  --green-ink: #0b7a3f;
+  --green-solid: #0b7a3f;
+  --green-solid-hover: #096534;
+  --green-bg: #e8f8ee;
+
+  --red: #c62828;
+  --red-solid: #c62828;
+  --red-solid-hover: #a91f1f;
+
+  --scrim: rgba(20, 24, 28, .34);
+  --toast-bg: rgba(20, 24, 28, .88);
+  --toast-ink: #ffffff;
+  --shadow-1: 0 1px 2px rgba(16, 24, 32, .10);
+  --shadow-2: 0 12px 32px rgba(16, 24, 32, .16);
+  --shadow-3: 0 26px 70px rgba(16, 24, 32, .24);
+
+  --chip-default: #6b6b6b;
+  --chip-d: #2b2b2b;
+  --chip-ks: #c94812;
+  --chip-xhs: #d81e37;
+  --chip-b: #0b7fa8;
+  --chip-hy: #b3560b;
+  --chip-dy: #cf4a15;
+  --chip-ac: #d13a48;
+  --chip-zq: #c2410c;
+  --ks: #c94812;
+
+  --selection: rgba(7, 193, 96, .26);
+  --scroll-thumb: rgba(16, 24, 32, .20);
+  --scroll-thumb-hover: rgba(16, 24, 32, .32);
+  --scroll-track: transparent;
+}
+
+/* ============ 基础 ============ */
 html, body {
   margin: 0;
   height: 100%;
-  background: var(--bg);
   color: var(--ink);
   font: 14px/1.5 "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
   user-select: none;
   overflow: hidden;
 }
 
+html { background: var(--bg-base); }
+
+/* 背景光晕放在 body 上：玻璃面板的 backdrop-filter 有东西可折射，又不额外加层 */
+body {
+  background-color: var(--bg-base);
+  background-image: var(--grad-bg);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
 button { font-family: inherit; }
 .hidden { display: none !important; }
 .muted { color: var(--ink-3); }
+
+/* 选区也用调色板里的颜色，不用浏览器默认的亮蓝 */
+::selection { background: var(--selection); color: var(--ink); }
+
+/* 主题切换是一次整体换装：只过渡颜色类属性，不碰布局，也不影响每秒刷新。
+   注意 .pill / .add-btn 有自己的过渡（含 transform），不能被这条覆盖，
+   所以下面单独再声明一次它们，保持悬停上浮和按下回弹的手感。 */
+body, .topbar, .panel, .dialog, .menu, .toast {
+  transition: background-color .22s ease, border-color .22s ease,
+              box-shadow .22s ease, color .22s ease;
+}
+.pill, .add-panel .add-btn {
+  transition: background-color .16s ease, background-image .16s ease,
+              border-color .16s ease, color .16s ease,
+              box-shadow .26s cubic-bezier(.22, .61, .36, 1),
+              transform .18s cubic-bezier(.22, .61, .36, 1);
+}
+/* .primary 有自己的过渡（含 transform），不能被上面「主题切换」那条覆盖掉 */
+.primary {
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease,
+              box-shadow .26s cubic-bezier(.22, .61, .36, 1),
+              transform .18s cubic-bezier(.22, .61, .36, 1);
+}
+/* 「减少动态效果」只该关掉装饰性动画（主题换装的整体淡入、面板过渡），
+   **不该关掉交互反馈**：悬停提亮、按下回弹、聚焦环这些是可用性的一部分。
+   另外 Windows 里「关闭窗口动画效果」会让 WebView2 直接上报 reduce，
+   真按 reduce 把所有 transition 清掉的话，按钮会变得完全没有反馈。 */
+@media (prefers-reduced-motion: reduce) {
+  body, .topbar, .panel, .dialog, .menu, .toast { transition: none !important; }
+  /* 交互控件保留颜色/描边/阴影过渡，只把位移类动效收掉 */
+  .pill, .icon-btn, .row, .ghost, .primary, .switch, .add-panel .add-btn {
+    transition-property: background-color, border-color, color, box-shadow !important;
+    transition-duration: .16s !important;
+  }
+  .pill:hover, .pill:active,
+  .primary:hover, .primary:active,
+  .add-panel .add-btn:hover, .add-panel .add-btn:active { transform: none !important; }
+}
+
+/* 键盘可达：鼠标点击不出现焦点环，Tab 走查时才出现 */
+button:focus { outline: none; }
+button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+/* 滚到底也看得见轨道的位置 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--scroll-track); }
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); background-clip: padding-box; }
 
 .app {
   display: flex;
@@ -36,64 +336,183 @@ button { font-family: inherit; }
   height: 100%;
 }
 
-/* ---------- 顶部 ---------- */
+/* ============ 顶栏（无边框窗口的标题栏） ============ */
 .topbar {
+  position: relative;
+  z-index: 20;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  gap: 8px;
+  gap: 10px;
+  height: 48px;
+  flex: none;
+  padding: 0 0 0 16px;
+  background-color: var(--surface);
+  background-image: var(--grad-bar);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
+  border-bottom: 1px solid var(--hairline);
+  box-shadow: inset 0 1px 0 var(--highlight), 0 6px 20px rgba(0, 0, 0, .10);
 }
 
-.brand { display: flex; align-items: center; gap: 8px; }
-.brand-name { font-size: 15px; font-weight: 600; letter-spacing: 0; }
+/* 拖动区：只有这两个元素能拖窗口（pywebview 约定 .pywebview-drag-region） */
+.pywebview-drag-region { cursor: default; }
 
-.top-actions { display: flex; align-items: center; gap: 8px; }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.brand-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
 .top-note {
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.4;
   color: var(--ink-3);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
+
+/* 中间留白，把功能按钮全部推到右边 */
+.top-drag {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 16px;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
 .row-actions { display: flex; gap: 8px; }
 
-.pill {
-  border: 0;
-  background: var(--pill);
-  color: var(--ink-2);
-  border-radius: 14px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
+/* 版本号：跟着功能按钮，弱化处理 */
+.version {
+  color: var(--ink-3);
+  font-size: 12.5px;
+  white-space: nowrap;
+  padding: 0 2px;
 }
-.pill:hover { background: #e9eaec; }
+
+/* 窗口三键：贴在右上角，方形热点，关闭 hover 变红 */
+.win-controls {
+  display: flex;
+  align-items: stretch;
+  align-self: stretch;
+  margin-left: 6px;
+  flex: none;
+}
+/* 选择器带 .win-controls 前缀：.icon-btn 的 34×34 圆角方块在这三键上要被压掉，
+   三键是贴着窗口右上角的直角热点（Windows 的规矩） */
+.win-controls .win-btn {
+  width: 46px;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  display: inline-grid;
+  place-items: center;
+}
+.win-controls .win-btn:hover { background: var(--pill-wash); color: var(--ink); }
+.win-controls .win-btn.close:hover { background: #e81123; color: #ffffff; }
+
+/* ============ 按钮 ============ */
+/* 胶囊 = 选项切换类按钮：干净的主题幽灵样式。
+   透明底 + 1px hairline 描边，悬停时才用主题绿淡淡填充 —— 和整体配色一体，不抢主按钮的戏。 */
+.pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 15px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.pill:hover {
+  background: var(--green-bg);
+  border-color: rgba(7, 193, 96, .45);
+  color: var(--ink);
+}
+.pill:active {
+  background: var(--green-bg);
+  border-color: rgba(7, 193, 96, .62);
+  color: var(--ink);
+}
+.pill:focus-visible {
+  outline: 2px solid var(--pill-ink);
+  outline-offset: 2px;
+}
 
 .icon-btn {
   border: 0;
   background: transparent;
-  font-size: 17px;
-  line-height: 1;
-  color: #444;
-  padding: 6px 8px;
-  border-radius: 6px;
+  color: var(--icon);
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 9px;
+  display: inline-grid;
+  place-items: center;
   cursor: pointer;
+  transition: background-color .15s, color .15s;
 }
-.icon-btn:hover { background: var(--pill); }
+.icon-btn:hover { background: var(--pill-wash); color: var(--ink); }
+.icon-btn:active { background: var(--pill-wash-active); }
 
-/* ---------- 主区：左边主播列表，右边添加主播 ---------- */
+/* app.js 往按钮里插的内联 SVG（月亮 / 太阳 / 最大化 / 还原 / 最小化 / 关闭） */
+.icon {
+  width: 17px;
+  height: 17px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+/* 设置齿轮：稍大一号，图标就是「按这里能设置」 */
+#btnMenu .icon { width: 20px; height: 20px; stroke-width: 1.6; }
+
+/* ============ 主区：左边主播列表，右边添加主播 ============ */
 .workspace {
   flex: 1;
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 330px;
   gap: 12px;
-  padding: 0 16px 12px;
+  padding: 14px 16px;
 }
 
+/* 玻璃面板：半透明 + 模糊 + 高光描边 + 柔和阴影 */
 .panel {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  background-color: var(--surface);
+  background-image: var(--grad-card);
+  backdrop-filter: blur(var(--blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.3);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  /* 玻璃面板：高光靠一层内描边，层次只声明一次，不再叠一层宽柔阴影 */
+  box-shadow: inset 0 1px 0 var(--highlight), var(--shadow-1);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -106,17 +525,17 @@ button { font-family: inherit; }
   justify-content: space-between;
   gap: 10px;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hairline-soft);
   min-height: 50px;
 }
 
-.panel-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.panel-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; min-width: 0; }
 .panel-title .badge {
   font-style: normal;
   font-size: 11px;
   font-weight: 400;
   color: var(--ink-2);
-  background: var(--pill);
+  background: var(--chip-fill);
   border-radius: 9px;
   padding: 1px 7px;
 }
@@ -139,10 +558,11 @@ button { font-family: inherit; }
   gap: 12px;
   padding: 10px 12px;
   min-height: 76px;
-  border-radius: 6px;
+  border-radius: 10px;
+  transition: background-color .15s;
 }
-.row:hover { background: var(--green-bg); }
-.row.selected { background: var(--green-bg); }
+.row:hover { background: var(--row-hover); }
+.row.selected { background: var(--row-selected); }
 
 /* 两个账号之间一条分栏线，始终可见 */
 .user-list .row + .row::before {
@@ -160,7 +580,7 @@ button { font-family: inherit; }
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
-  background: #eee;
+  background: var(--skeleton);
   flex: none;
 }
 
@@ -181,27 +601,41 @@ button { font-family: inherit; }
   color: var(--ink-3);
   flex-wrap: wrap;
 }
-.sub .status.live { color: var(--green); }
+.sub .status.live { color: var(--green-ink); }
 .sub .status.rec { color: var(--red); }
 .sub .platform {
   flex: none;
   height: 20px;
   padding: 0 7px;
-  border-radius: 4px;
-  background: #2b2b2b;
-  color: #fff;
+  border-radius: 6px;
+  background: var(--chip-default);
+  color: #ffffff;
   font-size: 11px;
   line-height: 20px;
 }
-.sub .platform.ks { background: var(--ks); }
-.sub .platform.xhs { background: #ff2442; }
+.sub .platform.d { background: var(--chip-d); }
+.sub .platform.ks { background: var(--chip-ks); }
+.sub .platform.xhs { background: var(--chip-xhs); }
+.sub .platform.b { background: var(--chip-b); }
+.sub .platform.hy { background: var(--chip-hy); }
+.sub .platform.dy { background: var(--chip-dy); }
+.sub .platform.ac { background: var(--chip-ac); }
+.sub .platform.zq { background: var(--chip-zq); }
 .sub .tag {
-  background: var(--pill);
-  border-radius: 4px;
+  background: var(--chip-fill);
+  border-radius: 6px;
   padding: 1px 6px;
   color: var(--ink-2);
   font-size: 12px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+/* 「上次录制 2026-10-19 10:57」这种长文案占整行，窄窗口下做省略 */
+.sub .last-rec { flex: none; }
+/* 没录过的弱化显示，只留底色 */
+.sub .tag.muted { color: var(--ink-3); background: transparent; }
 
 .row-right {
   display: flex;
@@ -210,25 +644,27 @@ button { font-family: inherit; }
   gap: 6px;
   flex: none;
 }
+/* 悬停 / 选中才显示「移除」。app.js 的 renderUsers 只在顺序变了才移动 li，
+   顺序不变时一行都不会被摘下来重插，所以这里的 opacity 过渡不会被每秒打断（见 syncListOrder） */
 .pills { display: flex; gap: 8px; height: 26px; opacity: 0; transition: opacity .12s; }
 .row:hover .pills, .row.selected .pills { opacity: 1; }
 
 .dangar-pill, .pill-danger {
   border: 0;
-  background: var(--red);
-  color: #fff;
-  border-radius: 13px;
+  background: var(--red-solid);
+  color: #ffffff;
+  border-radius: 999px;
   padding: 4px 14px;
   font-size: 12px;
   cursor: pointer;
 }
-.pill-danger:hover { background: #e6484f; }
+.pill-danger:hover { background: var(--red-solid-hover); }
 
 /* 每一行的「自动录制」开关：关掉之后同一位置就是「开始录制」 */
 .auto-ctl { display: flex; align-items: center; gap: 8px; }
 .auto-label { font-size: 12px; color: var(--ink-3); }
-.auto-ctl.on .auto-label { color: var(--green); }
-.auto-ctl.start .auto-label { color: var(--green); font-weight: 600; }
+.auto-ctl.on .auto-label { color: var(--green-ink); }
+.auto-ctl.start .auto-label { color: var(--green-ink); font-weight: 600; }
 
 .empty {
   text-align: center;
@@ -237,45 +673,55 @@ button { font-family: inherit; }
 .empty-title { font-size: 15px; color: var(--ink-2); }
 .empty-sub { margin-top: 8px; font-size: 13px; color: var(--ink-3); }
 
-/* ---------- 添加主播 ---------- */
+/* ============ 添加主播 ============ */
 #addText {
   width: 100%;
   flex: 1;
-  min-height: 150px;
+  /* 比原来小 10%：150 → 135，内边距 10 → 9 */
+  min-height: 135px;
   resize: none;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 9px;
   font: 13px/1.7 Consolas, "Microsoft YaHei", monospace;
   color: var(--ink);
   outline: none;
   user-select: text;
-  background: #fcfcfd;
+  background: var(--field-bg);
+  transition: border-color .15s, background-color .15s;
 }
-#addText:focus { border-color: var(--green); background: #fff; }
+#addText::placeholder { color: var(--ink-3); }
+#addText:focus { border-color: var(--green); background: var(--field-bg-focus); }
 
-.formats { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.formats { display: flex; flex-direction: column; gap: 7.2px; font-size: 12px; }   /* 行间隙 8 → 7.2（-10%） */
 .format-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 /* 平台之间拉一条分隔线，三行摆在一起也能一眼分清 */
-.format-row + .format-row { border-top: 1px solid var(--line); padding-top: 8px; }
+.format-row + .format-row { border-top: 1px solid var(--hairline-soft); padding-top: 7.2px; }   /* 同样 -10% */
 .pl-tag {
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 1px 6px;
-  color: #fff;
+  color: #ffffff;
   font-size: 11px;
-  background: #4a4a4a;
+  background: var(--chip-default);
   flex: none;
 }
-.pl-tag.d { background: #2b2b2b; }
-.pl-tag.k { background: var(--ks); }
-.pl-tag.x { background: #ff2442; }
+/* 抖音 + 快手 并排在同一行（它们支持的方式完全一样，合成一行就不重复写了） */
+.pl-tag + .pl-tag { margin-left: -2px; }
+.pl-tag.d { background: var(--chip-d); }
+.pl-tag.k { background: var(--chip-ks); }
+.pl-tag.x { background: var(--chip-xhs); }
+.pl-tag.b { background: var(--chip-b); }
+.pl-tag.hy { background: var(--chip-hy); }
+.pl-tag.dy { background: var(--chip-dy); }
+.pl-tag.ac { background: var(--chip-ac); }
+.pl-tag.zq { background: var(--chip-zq); }
 /* 每条示例前面带上「这类链接长什么样」的说明 */
 .fmt { display: inline-flex; align-items: center; gap: 4px; }
 .fmt i { font-style: normal; color: var(--ink-3); }
 .fmt em { font-style: normal; color: var(--ink-3); }
 .formats code {
-  background: var(--pill);
-  border-radius: 4px;
+  background: var(--chip-fill);
+  border-radius: 6px;
   padding: 2px 6px;
   color: var(--ink-2);
   user-select: text;
@@ -283,51 +729,165 @@ button { font-family: inherit; }
 
 .primary.block { width: 100%; padding: 10px 0; }
 
-.primary {
-  border: 0;
-  background: var(--green-soft);
-  color: #fff;
-  border-radius: 6px;
-  padding: 9px 22px;
-  font-size: 14px;
-  cursor: pointer;
+/* 「添加到主播列表」放在「添加主播」标题行右侧：只占内容宽度，不整行、不换行、不被裁。
+   选择器带 .add-panel 前缀：.primary 在下面且同权重，否则 padding / 圆角 / 阴影会被它盖回去。 */
+.add-panel .panel-head { gap: 12px; }
+/* 同一套蓝色玻璃语言，但它是这一栏的主操作，所以「更实、更重」：
+   底色是与胶囊同色相的实心蓝渐变（白字对比 5.17:1 起），描边更亮、高光更强、发光更重 */
+/* 和「应用」「检测录制」同一套星空语言（继承 .primary），
+   只把它在标题行里的尺寸与星晕单独调一点，保证它仍是这一栏最重的那颗。 */
+.add-panel .add-btn {
+  flex: 0 0 auto;
+  margin-left: auto;
+  height: 30px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: var(--cta-radius);
 }
-.primary:hover { background: var(--green); }
-.primary:disabled { background: #cfd4d8; cursor: default; }
-.primary.danger { background: var(--red); }
-.primary.danger:hover { background: #e6484f; }
+.add-panel .add-btn:hover { box-shadow: var(--cta-halo-hover); }
+
+
+/* 主按钮「炫彩」：设置-应用 / 顶栏-检测录制 / 添加主播-添加到主播列表 共用。
+   做法：深色底（--cta-fill）+ 一圈彩色流动边（conic-gradient 铺满，再用内层遮罩挖空），
+   外加一层同色柔光。没有描边式、没有浮雕——不使用 inset 高光/暗边做立体感，
+   色只在边缘流动，所以安静、有质感、不抢眼。
+   --cta-angle 由下方 keyframes 连续旋转，色带就沿边跑起来。 */
+@property --cta-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes cta-spin { to { --cta-angle: 360deg; } }
+
+.primary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  background-color: var(--cta-fill);
+  color: var(--cta-ink);
+  border-radius: var(--cta-radius);
+  padding: 8px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: .2px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  isolation: isolate;            /* 让 ::before 的混合只作用在按钮自身 */
+  animation: cta-spin 6s linear infinite;
+  box-shadow: var(--cta-halo);
+  transition: background-color .18s var(--cta-ease), color .18s var(--cta-ease),
+              box-shadow .22s var(--cta-ease), transform .18s var(--cta-ease);
+}
+/* 彩色环：铺满整块，内层再盖一块与底色相同的圆角矩形，中间挖空只留 1.5px 边 */
+.primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;                  /* 色环宽度（再细一档） */
+  background-image: var(--cta-spectrum);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: -1;
+}
+.primary:hover {
+  background-color: var(--cta-fill-hover);
+  box-shadow: var(--cta-halo-hover);
+  transform: translateY(-1px);
+}
+.primary:hover::before { background-image: var(--cta-spectrum-hover); }
+/* 悬停时色环转起来（角度由 transition 推，不依赖 animation） */
+.primary:hover { --cta-angle: 180deg; transition: background-color .18s var(--cta-ease),
+                color .18s var(--cta-ease), box-shadow .22s var(--cta-ease),
+                transform .18s var(--cta-ease), --cta-angle 1.4s var(--cta-ease); }
+.primary:active {
+  background-color: var(--cta-fill-active);
+  transform: translateY(0);
+  transition-duration: .1s;
+}
+/* focus 必须清晰可见：2px 同色相环 + 2px 留白，键盘走查一眼能找到 */
+.primary:focus-visible {
+  outline: 2px solid var(--cta-ring);
+  outline-offset: 2px;
+}
+/* 减少动态效果：关掉常驻旋转，但保留悬停时的一次缓慢转色（这是交互反馈，不是装饰动画） */
+@media (prefers-reduced-motion: reduce) {
+  .primary { animation: none; }
+  .primary:hover, .primary:active { transform: none; }
+}
+
+/* 顶栏的「检测录制」跟旁边的胶囊等高（30px）。
+   选择器带 .top-actions 前缀，只改顶栏这一个；
+   弹窗里的「应用」「确定」「开始转码」等主按钮继续用上面那条通用规则，高度不受影响。 */
+.top-actions .primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 16px;
+  font-size: 13px;
+  line-height: 1;
+  /* 与旁边胶囊同高（30），但圆角跟随主按钮的小圆角 */
+  border-radius: var(--cta-radius);
+}
+.primary:disabled {
+  background-color: var(--disabled);
+  background-image: none;
+  border-color: transparent;
+  box-shadow: none;
+  cursor: default;
+  color: var(--ink-2);
+  transform: none;
+}
+.primary.danger { background-color: var(--red-solid); background-image: var(--grad-danger); box-shadow: none; }
+.primary.danger:hover { background-color: var(--red-solid-hover); background-image: var(--grad-danger-hover); }
 
 .ghost {
-  border: 1px solid var(--green-soft);
-  background: #fff;
-  color: var(--green);
-  border-radius: 6px;
+  border: 1px solid var(--ghost-border);
+  background: var(--ghost-bg);
+  color: var(--green-ink);
+  border-radius: 9px;
   padding: 8px 18px;
-  font-size: 14px;
+  font-size: 13.5px;
   cursor: pointer;
+  transition: background-color .15s, border-color .15s, color .15s;
 }
-.ghost:hover { background: #f3fdf7; }
+.ghost:hover { background: var(--ghost-bg-hover); border-color: var(--green); }
 .ghost.small { padding: 5px 12px; font-size: 13px; }
 
-.add-result { font-size: 12.5px; white-space: pre-line; line-height: 1.7; }
+/* .add-result 已移除：添加过程提示统一走顶部 toast */
 
-/* ---------- 底栏 ---------- */
+/* ============ 底栏（顶栏改版后 HTML 里已经不用了，规则留着不动其它引用） ============ */
 .bottombar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px 12px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
-.version { color: var(--ink-3); font-size: 13px; }
 .bottom-right { display: flex; align-items: center; gap: 12px; }
 
-/* ---------- 菜单 ---------- */
+/* ============ 菜单 ============ */
 .menu {
   position: fixed;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, .14);
+  background-color: var(--surface-2);
+  background-image: var(--grad-card);
+  backdrop-filter: blur(var(--blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.3);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 var(--highlight), var(--shadow-2);
   padding: 6px 0;
   min-width: 150px;
   z-index: 50;
@@ -343,31 +903,37 @@ button { font-family: inherit; }
   color: var(--ink);
   cursor: pointer;
 }
-.menu button:hover { background: var(--green-bg); }
-.menu button:disabled { color: #c9cacd; cursor: default; }
+.menu button:hover { background: var(--row-hover); }
+.menu button:disabled { color: var(--ink-3); cursor: default; }
 .menu button:disabled:hover { background: transparent; }
 .menu button.danger { color: var(--red); }
-.menu .sep { height: 1px; background: var(--line); margin: 5px 0; }
+.menu .sep { height: 1px; background: var(--divider); margin: 5px 0; }
 
-/* ---------- 弹窗 ---------- */
+/* ============ 弹窗 ============ */
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(20, 24, 28, .28);
+  background: var(--scrim);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 80;
 }
 .dialog {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, .2);
+  background-color: var(--surface-2);
+  background-image: var(--grad-card);
+  backdrop-filter: blur(var(--blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.3);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 var(--highlight), var(--shadow-3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-.dialog.settings { width: 860px; height: 640px; max-width: 96vw; max-height: 92vh; }
+.dialog.settings { width: 768px; height: 92vh; max-width: 96vw; max-height: 690px; }   /* 用户要求：设置窗收窄 20%（960 → 768） */
 .dialog.medium { width: 620px; height: 520px; max-width: 96vw; max-height: 92vh; }
 .dialog.doc { width: 560px; max-width: 92vw; max-height: 80vh; }
 .dialog.small { width: 360px; max-width: 90vw; }
@@ -402,13 +968,14 @@ button { font-family: inherit; }
   gap: 8px;
   padding: 14px 16px;
   font-size: 15px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hairline-soft);
 }
 .brand-dot {
   width: 14px;
   height: 14px;
   border: 3px solid var(--green);
   border-radius: 50%;
+  flex: none;
 }
 .dialog-head .close {
   margin-left: auto;
@@ -416,15 +983,20 @@ button { font-family: inherit; }
   background: transparent;
   color: var(--ink-3);
   font-size: 16px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   cursor: pointer;
 }
+.dialog-head .close:hover { background: var(--pill-wash); color: var(--ink); }
+.dialog-head .close .icon { width: 15px; height: 15px; }
 
 .dialog-body { flex: 1; display: flex; overflow: hidden; }
 .dialog-body.column { flex-direction: column; padding: 12px 16px; }
 
 .side {
   width: 150px;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid var(--hairline-soft);
   padding: 18px 0;
   flex: none;
 }
@@ -437,9 +1009,11 @@ button { font-family: inherit; }
   padding: 12px 24px;
   font-size: 14px;
   color: var(--ink-2);
+  cursor: pointer;
 }
+.side-item:hover { background: var(--row-hover); }
 .side-item.active {
-  color: var(--green);
+  color: var(--green-ink);
   border-left: 3px solid var(--green);
   padding-left: 21px;
 }
@@ -449,16 +1023,17 @@ button { font-family: inherit; }
 .pane-row.two-col { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; }
 .pane-row label { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14px; }
 .pane-row input[type="number"], .pane-row input[type="text"], .pane-row select {
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
   padding: 6px 8px;
   font-size: 14px;
   color: var(--ink);
+  background: var(--field-bg);
   outline: none;
 }
 .pane-row input[type="number"] { width: 74px; }
 .pane-row input[type="text"] { width: 200px; user-select: text; }
-.pane-row input:focus, .pane-row select:focus { border-color: var(--green); }
+.pane-row input:focus, .pane-row select:focus { border-color: var(--green); background: var(--field-bg-focus); }
 
 .slider-field {
   display: grid;
@@ -471,20 +1046,24 @@ button { font-family: inherit; }
 
 input[type="range"] {
   -webkit-appearance: none;
+  appearance: none;
   height: 4px;
-  border-radius: 2px;
-  background: #e9eaec;
+  border-radius: 999px;
+  background: var(--range-track);
   outline: none;
   margin: 0;
+  cursor: pointer;
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   width: 14px;
   height: 14px;
   border-radius: 50%;
   border: 3px solid var(--green);
-  background: #fff;
+  background: #ffffff;
   cursor: pointer;
+  box-shadow: var(--shadow-1);
 }
 
 .switch-field {
@@ -499,10 +1078,10 @@ input[type="range"]::-webkit-slider-thumb {
   height: 24px;
   border-radius: 12px;
   border: 0;
-  background: #e5e6e8;
+  background: var(--switch-off);
   position: relative;
   cursor: pointer;
-  transition: background .15s;
+  transition: background-color .15s;
   padding: 0;
 }
 .switch::after {
@@ -513,8 +1092,8 @@ input[type="range"]::-webkit-slider-thumb {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .28);
   transition: transform .15s;
 }
 .switch.on { background: var(--green); }
@@ -525,7 +1104,7 @@ input[type="range"]::-webkit-slider-thumb {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline-soft);
 }
 .dialog-foot .ghost { margin-right: 10px; }
 .dialog-buttons { display: flex; align-items: center; }
@@ -536,12 +1115,12 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 10px;
   align-items: center;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
 }
-.file-list li:hover { background: #fafafa; }
-.file-list li.selected { background: var(--green-bg); }
+.file-list li:hover { background: var(--row-hover); }
+.file-list li.selected { background: var(--row-selected); }
 .file-list .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-list .fmeta { color: var(--ink-3); flex: none; }
 
@@ -560,11 +1139,55 @@ input[type="range"]::-webkit-slider-thumb {
   left: 50%;
   bottom: 74px;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, .78);
-  color: #fff;
-  border-radius: 6px;
+  background: var(--toast-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--toast-ink);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
   padding: 8px 16px;
   font-size: 13px;
+  box-shadow: var(--shadow-2);
   z-index: 120;
   max-width: 80vw;
+}
+
+/* ---------- 备注弹窗（app.js 动态创建，沿用 .modal/.dialog 的骨架） ---------- */
+.dialog.remark-dialog { width: 420px; }
+.remark-dialog .dialog-body.column { gap: 10px; }
+.remark-tip {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
+}
+.remark-input {
+  width: 100%;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--field-bg);
+  outline: none;
+  user-select: text;
+}
+.remark-input:focus { border-color: var(--green); background: var(--field-bg-focus); }
+.remark-input::placeholder { color: var(--ink-3); }
+.remark-dialog .dialog-foot .muted { font-size: 12.5px; }
+
+/* ============ 窄窗口：顶栏先把次要信息让出来，主功能永远不折行 ============ */
+@media (max-width: 1040px) {
+  #versionText { display: none; }
+}
+/* 窗口矮的时候，右栏的输入框让出高度，保证平台示例 + 按钮一屏放得下 */
+@media (max-height: 700px) {
+  #addText { min-height: 104px; }
+}
+@media (max-width: 940px) {
+  .top-note { display: none; }
 }

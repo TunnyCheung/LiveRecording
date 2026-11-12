@@ -1,11 +1,13 @@
-"""检查「动过就打不开」：
+"""检查「核心文件被改就打不开，移动目录/换电脑照常能开」：
 
 真跑打包版 exe，逐个把文件改一改，看它是不是只弹一个报错框、不建主窗口；
 再检查没人动时照常能开、而且跑过一次之后文件没有被程序自己写脏。
 """
 import ctypes
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from ctypes import wintypes
 from pathlib import Path
@@ -15,10 +17,11 @@ DIST = APP / "dist" / "锋芒直播录屏"
 INTERNAL = DIST / "_internal"
 EXE = DIST / "锋芒直播录屏.exe"
 MANIFEST = INTERNAL / "manifest.bin"
-MAIN_TITLE = "锋芒直播录屏 1.0.0"
+MAIN_TITLE = f"{APP_NAME} {VERSION}"
 FATAL_TITLE = "锋芒直播录屏"
 
 sys.path.insert(0, str(APP))
+from core.version import APP_NAME, VERSION  # 版本号唯一来源（打包脚本同一份）
 from core import guard  # noqa: E402
 
 user32 = ctypes.windll.user32
@@ -85,6 +88,20 @@ def run_case(name, expect):
     kill()
 
 
+def relocated_copy():
+    """模拟用户把整个绿色版复制到别的位置：路径变了，核心文件没动，必须能开。"""
+    parent = APP / "tools" / "_scratch"
+    parent.mkdir(parents=True, exist_ok=True)
+    root = Path(tempfile.mkdtemp(prefix="fm_move_", dir=str(parent)))
+    try:
+        target = root / "锋芒直播录屏"
+        shutil.copytree(DIST, target)
+        return target, target / EXE.name
+    except Exception:
+        shutil.rmtree(root, ignore_errors=True)
+        raise
+
+
 def flip(path, offset=None):
     """把文件里一个字节改掉，返回原内容用来还原。"""
     original = path.read_bytes()
@@ -106,6 +123,30 @@ def main():
     check("跑过一轮后完整性依然通过", ok, True)
     if not ok:
         print("        原因:", reason)
+
+    moved_root = None
+    moved_exe = None
+    try:
+        moved_root, moved_exe = relocated_copy()
+        moved_internal = moved_exe.parent / "_internal"
+        ok, reason = guard.verify(moved_internal, moved_exe)
+        check("复制到别的目录：校验仍通过", ok, True)
+        if not ok:
+            print("        原因:", reason)
+        kill()
+        subprocess.Popen([str(moved_exe)], cwd=str(moved_exe.parent))
+        got, text = probe()
+        check("复制到别的目录：正常打开", got, "main")
+        if text:
+            print("        报错框:", text.replace("\n", " "))
+        kill()
+    finally:
+        if moved_exe is not None:
+            subprocess.run(["taskkill", "/IM", moved_exe.name, "/F"], capture_output=True)
+            subprocess.run(["taskkill", "/IM", "ffmpeg.exe", "/F"], capture_output=True)
+            time.sleep(1.0)
+        if moved_root is not None:
+            shutil.rmtree(moved_root, ignore_errors=True)
 
     original = flip(INTERNAL / "ui.bin")
     try:
@@ -132,9 +173,9 @@ def main():
     finally:
         MANIFEST.write_bytes(saved)
 
-    extra.write_text("多出来的文件", encoding="utf-8")
+    extra.write_text("运行时会新增的文件", encoding="utf-8")
     try:
-        run_case("多了个文件：拒绝启动", "blocked")
+        run_case("多出运行文件：正常打开", "main")
     finally:
         extra.unlink(missing_ok=True)
 

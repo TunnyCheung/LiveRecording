@@ -16,8 +16,11 @@ from ctypes import wintypes
 from pathlib import Path
 
 APP = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(APP))
+from core.version import APP_NAME, VERSION  # noqa: E402  版本号唯一来源
+
 DEFAULT_EXE = APP / "dist" / "锋芒直播录屏" / "锋芒直播录屏.exe"
-TITLE = "锋芒直播录屏 1.0.0"
+TITLE = f"{APP_NAME} {VERSION}"
 
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32

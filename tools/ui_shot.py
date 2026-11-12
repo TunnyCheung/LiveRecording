@@ -13,11 +13,12 @@ from ctypes import wintypes
 from pathlib import Path
 
 from PIL import ImageGrab
+from core.version import APP_NAME, VERSION  # 版本号唯一来源
 
 APP = Path(__file__).resolve().parents[1]
 WORK = Path(__file__).resolve().parent / "_scratch"
 WORK.mkdir(parents=True, exist_ok=True)
-TITLE = "锋芒直播录屏 1.0.0"
+TITLE = f"{APP_NAME} {VERSION}"
 
 DEMO_USERS = [
     {"type": "kuaishou", "nickname": "狗蛋传奇10月11日生日庆典", "userid": "5102833285",

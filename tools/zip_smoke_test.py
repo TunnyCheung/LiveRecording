@@ -11,11 +11,12 @@ import time
 import zipfile
 from ctypes import wintypes
 from pathlib import Path
+from core.version import APP_NAME, VERSION  # 版本号唯一来源
 
 WORK = Path(__file__).resolve().parent / "_scratch"
 WORK.mkdir(parents=True, exist_ok=True)
 ZIP = Path(__file__).resolve().parents[1] / "dist" / "锋芒直播录屏.zip"
-MAIN_TITLE = "锋芒直播录屏 1.0.0"
+MAIN_TITLE = f"{APP_NAME} {VERSION}"
 FATAL_TITLE = "锋芒直播录屏"
 
 user32 = ctypes.windll.user32

@@ -1,8 +1,11 @@
-"""完整性校验：打包时把 exe 和 _internal 里每个文件算一遍 SHA256 存进清单，
-启动时再算一遍对不上就不让开。
+"""完整性校验：打包时把 exe 和 _internal 里随程序发布的固定文件算一遍 SHA256 存进清单，
+启动时再按相对路径算一遍，对不上就不让开。
 
 清单本身也走 vault 加密 + HMAC，所以改清单同样会被发现。清单放在 _internal 里，
 和 exe 分开存，这样不存在「把清单塞进 exe 又去校验 exe」的循环依赖。
+清单里不存绝对路径、用户名、机器码或卷序列号，所以整个目录可以任意移动、
+复制到其他电脑。运行时新增的缓存、日志等文件不参与校验；只有清单里的核心文件
+被改动或缺失才会拦截。
 """
 import hashlib
 import json
@@ -69,12 +72,4 @@ def verify(root, exe_path):
         if path.stat().st_size != entry.get("size") or sha256_file(path) != entry.get("sha256"):
             return False, f"文件被修改过：{name}"
 
-    extra = []
-    for path in sorted(root.rglob("*")):
-        if not path.is_file() or path.name == MANIFEST_NAME:
-            continue
-        if path.relative_to(root).as_posix() not in expected:
-            extra.append(path.relative_to(root).as_posix())
-    if extra:
-        return False, "多了没有的文件：" + "、".join(extra[:5])
     return True, ""

@@ -1,15 +1,21 @@
 # -*- mode: python ; coding: utf-8 -*-
 # 路径按 spec 自己的位置推项目根目录（build/ 的上一层），项目挪到哪都能打包。
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_all
 
 APP = Path(SPECPATH).parent
+streamget_datas, streamget_binaries, streamget_hiddenimports = collect_all('streamget')
 
 a = Analysis(
     [str(APP / 'app.py')],
     pathex=[],
-    binaries=[],
-    datas=[(str(APP / 'ui.bin'), '.')],
-    hiddenimports=[],
+    binaries=streamget_binaries,
+    datas=[(str(APP / 'ui.bin'), '.')] + streamget_datas,
+    hiddenimports=[
+        'webview.platforms.edgechromium',
+        'tools.douyin_probe',
+        'core.streamget_platform',
+    ] + streamget_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

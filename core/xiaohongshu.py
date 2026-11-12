@@ -22,6 +22,8 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import requests
 
+from .count import parse_count
+
 # 小红书只认这一套客户端标识，换成 PC UA 就拿不到直播数据
 MOBILE_HEADERS = {
     "user-agent": "ios/7.830 (ios 17.0; ; iPhone 15 (A2846/A3089/A3090/A3092))",
@@ -393,17 +395,5 @@ def _host_avatar(host):
 
 
 def _viewer_count(value):
-    """把「1万」「10」这类展示串折成数字给界面用。"""
-    text = str(value or "").strip().replace(",", "")
-    if not text:
-        return 0
-    match = re.match(r"([\d.]+)\s*(万|亿)?", text)
-    if not match:
-        return 0
-    number = float(match.group(1))
-    unit = match.group(2)
-    if unit == "万":
-        number *= 10000
-    elif unit == "亿":
-        number *= 100000000
-    return int(number)
+    """把「1万」「10」这类展示串折成数字给界面用（统一走 core/count.py）。"""
+    return parse_count(value)

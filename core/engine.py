@@ -9,11 +9,20 @@ import winsound
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 from .config import APP_DIR
 from .douyin import DouyinClient, DouyinError
+from .douyin_browser import resolve_web_rid
 from .kuaishou import THROTTLE_NOTE, KuaishouClient, KuaishouError
+from .streamget_platform import (
+    AcfunClient,
+    BilibiliClient,
+    DouyuClient,
+    HuyaClient,
+    StreamGetError,
+)
+from .extra_platform import ZhanqiClient
 from .xiaohongshu import XiaohongshuClient, XiaohongshuError
 
 LOG_PATH = APP_DIR / "锋芒直播录屏.log"
@@ -24,13 +33,18 @@ FFMPEG_CANDIDATES = [
     Path(r"F:\Media\ffmpeg\ffmpeg.exe"),
     Path(r"C:\ffmpeg\bin\ffmpeg.exe"),
 ]
-# 拉流时带的 Referer：三个平台各自校验自己的站点
+# 拉流时带的 Referer：各平台各自校验自己的站点
 REFERERS = {
     "douyin": "https://live.douyin.com/",
     "kuaishou": "https://live.kuaishou.com/",
     "xiaohongshu": "https://www.xiaohongshu.com/",
+    "bilibili": "https://live.bilibili.com/",
+    "huya": "https://www.huya.com/",
+    "douyu": "https://www.douyu.com/",
+    "acfun": "https://live.acfun.cn/",
 }
 BAD_CHARS = re.compile(r'[\\/:*?"<>|\r\n\t]')
+FAST_STREAM_SECONDS = 4
 
 
 def find_ffmpeg():
@@ -54,6 +68,34 @@ def human_size(num_bytes):
     if num_bytes >= 1024:
         return f"{num_bytes / 1024:.0f}KB"
     return f"{num_bytes}B"
+
+
+RECORD_SUFFIXES = (".ts", ".mp4", ".flv", ".aac")
+HISTORY_TTL = 30
+_STAMP_RE = re.compile(r"_(\d{4}-\d{2}-\d{2})_(\d{6})$")
+
+
+def split_record_name(name):
+    """从录像文件名里拆出 (主播 tag, "日期 时:分", 排序用完整时间戳)。
+
+    文件名是 {昵称}_{tag}_{日期}_{时分秒}.ext，tag 用抖音号 / 快手号，没有就用 userid；
+    开了自动分段时尾部还会再接一段 _日期_时分秒，所以先把尾部的时间戳一段段剥掉，
+    剩下最后一段下划线后面的就是 tag。认不出来的一律返回空串（不是我们录的文件）。
+    """
+    stem = Path(name).stem
+    show = ""
+    key = ""
+    while True:
+        match = _STAMP_RE.search(stem)
+        if not match:
+            break
+        if not key:
+            show = f"{match.group(1)} {match.group(2)[:2]}:{match.group(2)[2:4]}"
+            key = f"{match.group(1)} {match.group(2)}"
+        stem = stem[: match.start()]
+    if not key or "_" not in stem:
+        return "", "", ""
+    return stem.rsplit("_", 1)[-1], show, key
 
 
 def human_duration(seconds):
@@ -93,6 +135,7 @@ class Recorder(threading.Thread):
         self.use_headers = False
         self.referer = REFERERS.get(user.get("type"), REFERERS["douyin"])
         self.fast_failures = 0
+        self.fast_attempts = 0
         self.last_count_write = 0.0
 
     # ---- 对外 ----
@@ -100,6 +143,7 @@ class Recorder(threading.Thread):
         self.finished_reason = reason
         self.stop_flag.set()
         self._kill()
+        self.engine.invalidate_history()
 
     def request_restart(self, reason="换流分段"):
         self.finished_reason = reason
@@ -161,13 +205,23 @@ class Recorder(threading.Thread):
             cmd += ["-f", container, str(out_path)]
         return cmd
 
+    @staticmethod
+    def _secure_url(url):
+        """平台给的不一定是最好的协议；明文 HTTP 常被 CDN 直接断流。"""
+        parsed = urlparse(str(url or ""))
+        if parsed.scheme != "http" or not parsed.netloc:
+            return str(url or "")
+        return urlunparse(parsed._replace(scheme="https"))
+
     def _run_ffmpeg(self, url, with_stamp):
         folder = self._folder()
         stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         out_path = folder / f"{self._base()}_{stamp}.{self._ext()}"
+        url = self._secure_url(url)
         cmd = self._build_cmd(url, out_path, with_stamp)
         self.engine.log(f"[{self.user.get('nickname')}] 开始录制：{out_path.name}")
         self.current_file = str(out_path)
+        self.engine.invalidate_history()
         self.proc = subprocess.Popen(
             cmd, stdin=subprocess.DEVNULL,
             # stderr 用 DEVNULL：没人读的管道写满 64KB 会把 ffmpeg 卡死，录制就断了
@@ -179,6 +233,7 @@ class Recorder(threading.Thread):
     def run(self):
         cfg = self.engine.store.config
         with_stamp = bool(cfg["recTime"] or cfg["recFileSize"])
+        wait = 0
         while not self.stop_flag.is_set():
             url = self.engine.current_stream_url(self.userid)
             if not url:
@@ -224,21 +279,30 @@ class Recorder(threading.Thread):
             if self.finished_reason == "达到限制":
                 self.engine.log(f"[{self.user.get('nickname')}] 达到限制，停止录制")
                 return
-            if elapsed < 6:
+            if elapsed < FAST_STREAM_SECONDS:
                 self.fast_failures += 1
+                self.fast_attempts += 1
                 if not self.use_headers:
                     self.use_headers = True
                     self.engine.log(f"[{self.user.get('nickname')}] 起流失败，带 Referer 重试")
                     continue
-                if self.fast_failures >= 3:
-                    self.last_error = "起流失败，已停止"
+                if self.fast_attempts >= 12:
+                    self.last_error = "直播线路连续中断，已停止重连"
                     self.engine.log(f"[{self.user.get('nickname')}] {self.last_error}")
                     return
+                wait = min(10, 2 ** max(0, self.fast_attempts - 3))
+                self.engine.log(
+                    f"[{self.user.get('nickname')}] 直播线路短暂中断，{wait} 秒后重连"
+                )
             else:
                 self.fast_failures = 0
+                self.fast_attempts = 0
             if not self.engine.is_live(self.userid):
                 return
-            time.sleep(3)
+            if elapsed < FAST_STREAM_SECONDS:
+                time.sleep(wait)
+            else:
+                time.sleep(3)
 
     def _session_bytes(self):
         if not self.current_file:
@@ -271,7 +335,13 @@ class Engine:
             "douyin": DouyinClient(),
             "kuaishou": KuaishouClient(),
             "xiaohongshu": XiaohongshuClient(),
+            "bilibili": BilibiliClient(),
+            "huya": HuyaClient(),
+            "douyu": DouyuClient(),
+            "acfun": AcfunClient(),
         }
+        # 从 bililive-go 提炼的补充平台（目前只有战旗）
+        self.clients.update({"zhanqi": ZhanqiClient()})
         self.client = self.clients["douyin"]
         self.ffmpeg = find_ffmpeg()
         self.runtime = {}
@@ -283,6 +353,8 @@ class Engine:
         self._stop = threading.Event()
         self._warned_block = False
         self._ks_share_hinted = set()
+        self._history = {}       # tag -> 最近一次录制的文件
+        self._history_at = 0.0   # 上次扫录像目录的时间
 
     def client_for(self, user):
         return self.clients.get((user or {}).get("type") or "douyin", self.client)
@@ -302,10 +374,54 @@ class Engine:
             "skip_session": False, "note": "",
         })
 
+    # ---- 上次录制 ----
+
+    @staticmethod
+    def _record_tag(user):
+        """录像文件名里那个 tag：优先抖音号 / 快手号，其次 userid（和 Recorder._base 一致）。"""
+        return safe_name(
+            str((user or {}).get("unique_id") or (user or {}).get("userid") or ""), "id"
+        )
+
+    def invalidate_history(self):
+        """录制开始 / 结束时调一下：下次取状态立刻重扫录像目录。"""
+        self._history_at = 0.0
+
+    def _record_history(self):
+        """按 tag 归拢每个主播最近的一次录制（整棵录像目录只扫一次，缓存 30 秒）。
+
+        时间戳从文件名里取：比文件 mtime 可靠，录像挪过目录也不会变。
+        """
+        now = time.time()
+        if self._history_at and now - self._history_at < HISTORY_TTL:
+            return self._history
+        latest = {}
+        try:
+            for entry in Path(self.store.config["save"]).rglob("*"):
+                if not entry.is_file() or entry.suffix.lower() not in RECORD_SUFFIXES:
+                    continue
+                tag, show, key = split_record_name(entry.name)
+                if not tag or not key:
+                    continue
+                try:
+                    size = entry.stat().st_size
+                except OSError:
+                    continue
+                old = latest.get(tag)
+                if old is None or key > old["key"]:
+                    latest[tag] = {"at": show, "key": key, "size": size, "name": entry.name}
+        except OSError:
+            latest = {}
+        self._history = latest
+        self._history_at = now
+        return latest
+
     def snapshot(self):
         users = []
+        history = self._record_history()
         for user in self.store.users:
             slot = self._slot(user["userid"])
+            record = history.get(self._record_tag(user)) or {}
             users.append({
                 **user,
                 "status": slot["status"],
@@ -318,6 +434,9 @@ class Engine:
                 "error": slot["error"],
                 "recording": slot["recording"],
                 "skip_session": slot["skip_session"],
+                "last_record_at": record.get("at", ""),
+                "last_record_size": human_size(record["size"]) if record else "",
+                "last_record_file": record.get("name", ""),
             })
         return {
             "running": self.running,
@@ -358,14 +477,9 @@ class Engine:
         self.log("停止检测录制")
 
     def _loop(self):
-        for client in self.clients.values():
-            client.bootstrap()
         while not self._stop.is_set():
             users = [u for u in self.store.users if not u["disable"]]
             if users:
-                with self._lock:
-                    for client in self.clients.values():
-                        client.bootstrap()
                 for user in users:
                     if self._stop.is_set():
                         break
@@ -374,6 +488,11 @@ class Engine:
                     except Exception as exc:  # noqa: BLE001
                         # 网络抽风、接口改版都不该让整个检测线程悄悄死掉
                         self.log(f"[{user.get('nickname')}] 检测异常：{exc!r}")
+                # 设备指纹放在每轮检测之后再续：点「检测录制」时第一轮立刻出结果，
+                # 不用先等 7 个平台的 bootstrap 网络往返（bootstrap 内部有 30 分钟节流）。
+                with self._lock:
+                    for client in self.clients.values():
+                        client.bootstrap()
             try:
                 self._reap()
             except Exception as exc:  # noqa: BLE001
@@ -479,7 +598,8 @@ class Engine:
         # 完整说明留在日志里（那一行太长会把列表挤花）
         if not known and not slot["recording"]:
             slot["status"] = "无法确认"
-            slot["error"] = slot["error"] or (note or "状态暂时读不到，稍后自动重试")
+            # 完整原因已经在日志里了；列表这一行只放一句短话，免得被长文案挤花
+            slot["error"] = slot["error"] or "状态暂时读不到，稍后自动重试"
 
     def _hint_kuaishou_share(self, user):
         """快手接口被限流时，没有分享链接的主播查不到状态。
@@ -500,27 +620,60 @@ class Engine:
 
     def _fetch_info(self, user):
         """直播间接口（web_rid）状态最准，优先用它；再用主页接口补齐资料。"""
-        if (user or {}).get("type") == "kuaishou":
+        platform = str((user or {}).get("type") or "douyin")
+        if platform == "kuaishou":
             pid = str(user.get("unique_id") or user.get("userid") or "")
             share_url = str(user.get("share_url") or "")
             if not pid and not share_url:
                 raise KuaishouError("缺少快手主播 ID")
             return self.clients["kuaishou"].room_info(pid, share_url)
-        if (user or {}).get("type") == "xiaohongshu":
+        if platform == "xiaohongshu":
             room_id = str(user.get("web_rid") or user.get("userid") or "")
             if not room_id:
                 raise XiaohongshuError("缺少小红书直播间 ID")
             return self.clients["xiaohongshu"].room_info(
                 room_id, str(user.get("share_url") or "")
             )
+        if platform in ("bilibili", "huya", "douyu", "acfun"):
+            room_id = str(user.get("web_rid") or user.get("userid") or "")
+            if not room_id:
+                raise StreamGetError("缺少直播间 ID")
+            return self.clients[platform].room_info(
+                room_id, self.store.config["definition"]
+            )
+        if platform == "zhanqi":
+            room_id = str(user.get("web_rid") or user.get("userid") or "")
+            if not room_id:
+                raise StreamGetError("缺少战旗房间号")
+            return self.clients["zhanqi"].room_info(
+                room_id, self.store.config["definition"]
+            )
         web_rid = str(user.get("web_rid") or "")
         sec_uid = str(user.get("sec_uid") or "")
+        uid = str(user.get("userid") or "")
         if web_rid:
             info = self.client.room_by_web_rid(web_rid)
-            if info and (info.get("live") or info.get("sec_uid")):
+            if info and info.get("live_known"):
+                return info
+        # 直播间接口没结论（或这条记录还没有 web_rid）时，先按 uid 问一次开播状态：
+        # 这条链路在 live.douyin.com 上，不吃 www.douyin.com 主页接口那套风控，
+        # 明确未开播就直接给结论，也省掉了每轮开一个隐藏浏览器（原来要等 20 多秒）。
+        status = self.client.live_status_by_uid(uid)
+        if status is False:
+            return self.client.offline_info(sec_uid, web_rid)
+        if not web_rid and sec_uid:
+            # 只有「在播 / 状态未知」才值得开隐藏浏览器去主页找 web_rid（在播时几秒就有）。
+            # resolve_web_rid 内部有缓存和负缓存，不会每轮都开窗口。
+            web_rid = resolve_web_rid(sec_uid)
+            if web_rid:
+                self.store.update_user(user["userid"], web_rid=web_rid)
+                user["web_rid"] = web_rid
+        if web_rid:
+            info = self.client.room_by_web_rid(web_rid)
+            if info and info.get("live_known"):
                 return info
         if sec_uid:
-            return self.client.profile(sec_uid)
+            return self.client.profile(sec_uid, web_rid=web_rid, uid=uid)
         if web_rid:
             raise DouyinError("拿不到该直播间的状态")
         raise DouyinError("缺少 sec_uid / web_rid")

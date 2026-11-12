@@ -40,6 +40,18 @@ USERS = [
     {"type": "xiaohongshu", "nickname": "丙主播", "userid": "570492037891274992", "sec_uid": "",
      "web_rid": "570492037891274992", "unique_id": "570492037891274992", "avatar": "",
      "disable": False, "mode": "video", "share_url": "https://xhslink.com/o/AfYblO6KcOt"},
+    {"type": "bilibili", "nickname": "丁主播", "userid": "6", "sec_uid": "",
+     "web_rid": "6", "unique_id": "6", "avatar": "",
+     "disable": False, "mode": "video", "share_url": ""},
+    {"type": "huya", "nickname": "戊主播", "userid": "660000", "sec_uid": "",
+     "web_rid": "660000", "unique_id": "660000", "avatar": "",
+     "disable": False, "mode": "video", "share_url": ""},
+    {"type": "douyu", "nickname": "己主播", "userid": "9999", "sec_uid": "",
+     "web_rid": "9999", "unique_id": "9999", "avatar": "",
+     "disable": False, "mode": "video", "share_url": ""},
+    {"type": "acfun", "nickname": "庚主播", "userid": "1234", "sec_uid": "",
+     "web_rid": "1234", "unique_id": "1234", "avatar": "",
+     "disable": False, "mode": "video", "share_url": ""},
 ]
 
 RESULTS = []
@@ -55,10 +67,10 @@ def driver(window, api):
     time.sleep(3)
     store = api._store
     check("起始：甲主播 disable", store.find("jia")["disable"], True)
-    check("三行的平台标记", window.evaluate_js(
+    check("七行的平台标记", window.evaluate_js(
         "Array.from(document.querySelectorAll('li.row .sub .platform'))"
         ".map(function (e) { return e.textContent; })"),
-        ["快手", "抖音", "小红书"])
+        ["快手", "抖音", "小红书", "B站", "虎牙", "斗鱼", "Acfun"])
 
     # 第一行是「开始录制」状态，点一下开关应该恢复自动录制
     window.evaluate_js("document.querySelectorAll('li.row')[0]"

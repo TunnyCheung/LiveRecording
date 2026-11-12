@@ -3,6 +3,7 @@ pywebview==6.2.1
 requests==2.34.2
 pillow==12.3.0
 pystray==0.19.5
+streamget==4.0.10
 
 # 打包成 exe 需要
 pyinstaller==6.22.3
