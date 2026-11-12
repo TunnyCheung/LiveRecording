@@ -22,3 +22,7 @@ __pycache__/
 
 # ffmpeg 是大件，按 README 里写的方式自己放到 exe 旁边
 /ffmpeg.exe
+
+# 打包签名密钥与本地主播缓存：只在作者机器上，不上传
+/core/signkey.py
+/douyin_rooms.json
